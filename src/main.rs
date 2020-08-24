@@ -7,8 +7,8 @@ use rocket::response::NamedFile;
 use rocket::*;
 
 #[get("/")]
-fn index() -> &'static str {
-    "It works"
+fn index() -> Result<NamedFile, NotFound<String>> {
+    static_file(PathBuf::from("index.html"))
 }
 
 #[get("/<file..>")]
