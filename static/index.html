@@ -10,9 +10,13 @@
 <body>
   <h1>Welcome</h1>
 
-  <form>
-    <label for="room_pass">Room</label>
-    <input type="text" name="room_pass">
+  <form action="/enter_room" method="POST">
+    <label for="name">Room</label>
+    <input type="text" name="name">
+
+    <label for="password">Password</label>
+    <input type="password" name="password">
+
     <input type="submit" value="Enter">
   </form>
 </body>

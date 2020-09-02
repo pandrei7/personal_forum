@@ -10,6 +10,7 @@
 //! This module also implements the "cleaning" behaviour of old sessions,
 //! which removes stale sessions automatically.
 
+use std::ops::Deref;
 use std::thread;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
@@ -24,10 +25,47 @@ use rocket_contrib::databases::rusqlite::Connection;
 use rocket_contrib::*;
 
 /// Holds a connection to the sessions database.
+pub struct SessionsDbConn(HelperDbConn);
+
+/// A helper-type which holds a connection to the sessions database.
 ///
 /// It's a type needed to interact with Rocket.
+/// It's required because connections to the sessions database have setup
+/// requirements which we address manually.
 #[database("sessions")]
-pub struct SessionsDbConn(Connection);
+struct HelperDbConn(Connection);
+
+impl SessionsDbConn {
+    /// Returns a fairing which correctly sets up connections to the sessions database.
+    pub fn fairing() -> impl Fairing {
+        HelperDbConn::fairing()
+    }
+}
+
+impl<'a, 'r> FromRequest<'a, 'r> for SessionsDbConn {
+    type Error = ();
+
+    /// Connections to the sessions database should enforce foreign key
+    /// constraints. Because we use SQLite, we have to manually activate these
+    /// checks with a pragma statement. This statement only applies to one
+    /// connection, so each connection should be set up individually.
+    fn from_request(req: &'a Request<'r>) -> Outcome<SessionsDbConn, Self::Error> {
+        let conn = req.guard::<HelperDbConn>()?;
+
+        match conn.execute("PRAGMA foreign_keys=ON;", &[]) {
+            Ok(_) => Outcome::Success(SessionsDbConn(conn)),
+            _ => Outcome::Failure((rocket::http::Status::InternalServerError, ())),
+        }
+    }
+}
+
+impl Deref for SessionsDbConn {
+    type Target = Connection;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
 
 /// The path of the database holding session info.
 const DB_PATH: &str = "db/sessions.db";
@@ -64,6 +102,29 @@ impl Session {
             }
             _ => false,
         }
+    }
+
+    /// Saves a room-login attempt for the user with the associated session.
+    pub fn save_room_attempt(
+        &self,
+        conn: &Connection,
+        name: &str,
+        hashed_password: &str,
+    ) -> rusqlite::Result<()> {
+        conn.execute(
+            "INSERT OR REPLACE INTO room_attempts (id, name, password) VALUES (?1, ?2, ?3);",
+            &[&self.id, &name, &hashed_password],
+        )
+        .and(Ok(()))
+    }
+
+    /// Retrieves the last password associated with a login attempt for a given room, if it exists.
+    pub fn get_room_attempt(&self, conn: &Connection, name: &str) -> rusqlite::Result<String> {
+        conn.query_row(
+            "SELECT password FROM room_attempts WHERE id = ?1 AND name = ?2;",
+            &[&self.id, &name],
+            |row| row.get::<usize, String>(0),
+        )
     }
 
     /// Keeps a session "alive" by updating its timestamp.
@@ -159,13 +220,24 @@ impl SessionFairing {
         let conn = Connection::open(DB_PATH)?;
 
         conn.execute("DROP TABLE IF EXISTS sessions;", &[])?;
+        conn.execute("DROP TABLE IF EXISTS room_attempts;", &[])?;
 
         conn.execute(
             "CREATE TABLE IF NOT EXISTS sessions (
-            id          TEXT PRIMARY KEY,
-            last_update INTEGER NOT NULL,
-            is_admin    INTEGER NOT NULL
-        );",
+                id          TEXT PRIMARY KEY,
+                last_update INTEGER NOT NULL,
+                is_admin    INTEGER NOT NULL
+            );",
+            &[],
+        )?;
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS room_attempts (
+                id       TEXT NOT NULL,
+                name     TEXT NOT NULL,
+                password TEXT NOT NULL,
+                PRIMARY KEY (id, name),
+                FOREIGN KEY (id) REFERENCES sessions(id) ON DELETE CASCADE
+            );",
             &[],
         )
         .and(Ok(()))
@@ -177,6 +249,9 @@ impl SessionFairing {
     /// The thread cleans the database every `PERIOD` seconds.
     fn start_cleaner() -> rusqlite::Result<()> {
         let conn = Connection::open(DB_PATH)?;
+
+        // We want dependent entries to get deleted automatically.
+        conn.execute("PRAGMA foreign_keys=ON;", &[])?;
 
         thread::spawn(move || loop {
             let start = Instant::now();
@@ -194,7 +269,7 @@ impl SessionFairing {
         Ok(())
     }
 
-    /// Deletes "old" sessions from the databse.
+    /// Deletes "old" sessions from the database.
     ///
     /// A session is considered old if its last update happened more than
     /// `TIMEOUT_SECS` seconds before the function was called.

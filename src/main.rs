@@ -1,17 +1,22 @@
 #![feature(proc_macro_hygiene, decl_macro)]
 
 mod admins;
+mod messages;
+mod rooms;
 mod sessions;
 mod users;
 
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use rocket::request::Form;
 use rocket::response::status::NotFound;
 use rocket::response::{Flash, NamedFile, Redirect};
 use rocket::*;
+use rocket_contrib::templates::Template;
 
 use admins::{Admin, AdminLogin, AdminsDbConn};
+use rooms::{RoomFairing, RoomLogin, RoomsDbConn};
 use sessions::{Session, SessionFairing, SessionsDbConn};
 
 #[get("/")]
@@ -79,6 +84,55 @@ fn admin_pane_for_non_admin() -> Flash<Redirect> {
     )
 }
 
+#[post("/enter_room", data = "<login>")]
+fn enter_room(
+    login: Form<RoomLogin>,
+    rooms_conn: RoomsDbConn,
+    session: Session,
+    sessions_conn: SessionsDbConn,
+) -> Result<Redirect, Flash<Redirect>> {
+    if !login.is_valid(&rooms_conn).unwrap_or(false) {
+        return Err(Flash::error(
+            Redirect::to("/"),
+            "Credentials are not valid.",
+        ));
+    }
+
+    session
+        .save_room_attempt(
+            &sessions_conn,
+            &login.name,
+            &rooms::hash_password(&login.password),
+        )
+        .map_err(|_| Flash::error(Redirect::to("/"), "Could not save your login attempt."))
+        .map(|_| Redirect::to(format!("/room/{}", login.name)))
+}
+
+#[get("/room/<name>")]
+fn room(
+    name: String,
+    session: Session,
+    sessions_conn: SessionsDbConn,
+    rooms_conn: RoomsDbConn,
+) -> Result<Template, Flash<Redirect>> {
+    let has_access = session
+        .get_room_attempt(&sessions_conn, &name)
+        .and_then(|password| rooms_conn.valid_credentials(&name, &password))
+        .unwrap_or(false);
+
+    if !has_access {
+        return Err(Flash::error(
+            Redirect::to("/"),
+            "Credentials are not valid.",
+        ));
+    }
+
+    // Populate the room template.
+    let mut context = HashMap::new();
+    context.insert("name", name);
+    Ok(Template::render("room", &context))
+}
+
 #[get("/<file..>", rank = 6)]
 fn static_file(file: PathBuf) -> Result<NamedFile, NotFound<String>> {
     let path = Path::new("static/").join(file);
@@ -95,13 +149,18 @@ fn rocket() -> rocket::Rocket {
                 admin_login_for_non_admin,
                 admin_pane_for_admin,
                 admin_pane_for_non_admin,
+                enter_room,
                 index,
-                static_file
+                room,
+                static_file,
             ],
         )
+        .attach(Template::fairing())
         .attach(SessionFairing::default())
+        .attach(RoomFairing::default())
         .attach(AdminsDbConn::fairing())
         .attach(SessionsDbConn::fairing())
+        .attach(RoomsDbConn::fairing())
 }
 
 fn main() {

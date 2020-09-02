@@ -1,3 +1,4 @@
 [global.databases]
 sessions = { url = "db/sessions.db" }
 admins = { url = "db/admins.db" }
+rooms = { url = "db/rooms.db" }

@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <title>Room '{{ name }}'</title>
+</head>
+
+<body>
+  <h1>Welcome to '{{ name }}'</h1>
+</body>
+
+</html>
