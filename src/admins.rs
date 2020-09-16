@@ -52,12 +52,12 @@ impl AdminLogin {
     /// Administrators are identified by their username,
     /// and their passwords are held in a database as SHA-256 hashes.
     pub fn is_valid(&self, conn: &Connection) -> rusqlite::Result<bool> {
-        let sql = format!(
-            "SELECT password FROM admins WHERE username = '{}';",
-            self.username
-        );
+        let wanted = conn.query_row(
+            "SELECT password FROM admins WHERE username = ?;",
+            &[&self.username],
+            |row| row.get::<usize, String>(0),
+        )?;
 
-        let wanted = conn.query_row(&sql, &[], |row| row.get::<usize, String>(0))?;
         let actual = format!("{:x}", Sha256::digest(self.password.as_bytes()));
 
         Ok(actual == wanted)

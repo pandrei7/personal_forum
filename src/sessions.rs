@@ -93,8 +93,10 @@ impl Session {
     /// It makes the necessary updates to the database,
     /// and returns true if the operation succeeds.
     pub fn make_admin(&mut self, conn: &Connection) -> bool {
-        let sql = format!("UPDATE sessions SET is_admin = 1 WHERE id = '{}';", self.id);
-        match conn.execute(&sql, &[]) {
+        match conn.execute(
+            "UPDATE sessions SET is_admin = 1 WHERE id = ?;",
+            &[&self.id],
+        ) {
             // The query should update exactly one row.
             Ok(1) => {
                 self.is_admin = true;
@@ -131,25 +133,24 @@ impl Session {
     fn keep_alive(&mut self, conn: &Connection) -> rusqlite::Result<()> {
         self.last_update = Session::current_timestamp();
 
-        let sql = format!(
-            "UPDATE sessions SET last_update = {} WHERE id = '{}';",
-            self.last_update, self.id
-        );
-        conn.execute(&sql, &[]).and(Ok(()))
+        conn.execute(
+            "UPDATE sessions SET last_update = ?1 WHERE id = ?2;",
+            &[&self.last_update, &self.id],
+        )
+        .and(Ok(()))
     }
 
     /// Tries to retrive the session associated with an id from the database.
     fn from_db(conn: &Connection, id: &str) -> rusqlite::Result<Session> {
-        let sql = format!(
-            "SELECT last_update, is_admin FROM sessions WHERE id = '{}';",
-            id
-        );
-
-        conn.query_row(&sql, &[], |row| Session {
-            id: String::from(id),
-            last_update: row.get(0),
-            is_admin: row.get::<usize, i32>(1) == 1,
-        })
+        conn.query_row(
+            "SELECT last_update, is_admin FROM sessions WHERE id = ?;",
+            &[&id],
+            |row| Session {
+                id: String::from(id),
+                last_update: row.get(0),
+                is_admin: row.get::<usize, i32>(1) == 1,
+            },
+        )
     }
 
     /// Tries to start a new session and inserts it into the database.
@@ -157,11 +158,11 @@ impl Session {
         let id = Session::new_session_id();
         let last_update = Session::current_timestamp();
 
-        let sql = format!(
-            "INSERT INTO sessions (id, last_update, is_admin) VALUES ('{}', {}, {});",
-            id, last_update, 0
-        );
-        conn.execute(&sql, &[]).and(Ok(id))
+        conn.execute(
+            "INSERT INTO sessions (id, last_update, is_admin) VALUES (?1, ?2, ?3);",
+            &[&id, &last_update, &0],
+        )
+        .and(Ok(id))
     }
 
     /// Returns a (probably) new, valid session id.
@@ -277,8 +278,8 @@ impl SessionFairing {
         const TIMEOUT_SECS: i64 = 7200;
         let too_old = Session::current_timestamp() - TIMEOUT_SECS;
 
-        let sql = format!("DELETE FROM sessions WHERE last_update < {};", too_old);
-        conn.execute(&sql, &[]).and(Ok(()))
+        conn.execute("DELETE FROM sessions WHERE last_update < ?;", &[&too_old])
+            .and(Ok(()))
     }
 }
 
