@@ -16,7 +16,7 @@ use rocket::*;
 use rocket_contrib::templates::Template;
 
 use admins::{Admin, AdminLogin, AdminsDbConn};
-use rooms::{RoomFairing, RoomLogin, RoomsDbConn};
+use rooms::{Room, RoomFairing, RoomLogin, RoomsDbConn};
 use sessions::{Session, SessionFairing, SessionsDbConn};
 
 #[get("/")]
@@ -109,18 +109,8 @@ fn enter_room(
 }
 
 #[get("/room/<name>")]
-fn room(
-    name: String,
-    session: Session,
-    sessions_conn: SessionsDbConn,
-    rooms_conn: RoomsDbConn,
-) -> Result<Template, Flash<Redirect>> {
-    let has_access = session
-        .get_room_attempt(&sessions_conn, &name)
-        .and_then(|password| rooms_conn.valid_credentials(&name, &password))
-        .unwrap_or(false);
-
-    if !has_access {
+fn room(name: String, room: Option<Room>) -> Result<Template, Flash<Redirect>> {
+    if room.is_none() {
         return Err(Flash::error(
             Redirect::to("/"),
             "Credentials are not valid.",
