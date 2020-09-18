@@ -9,13 +9,16 @@ mod users;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
+use rocket::http::Status;
 use rocket::request::Form;
 use rocket::response::status::NotFound;
 use rocket::response::{Flash, NamedFile, Redirect};
 use rocket::*;
+use rocket_contrib::json::Json;
 use rocket_contrib::templates::Template;
 
 use admins::{Admin, AdminLogin, AdminsDbConn};
+use messages::{Message, MessageJson};
 use rooms::{Room, RoomFairing, RoomLogin, RoomsDbConn};
 use sessions::{Session, SessionFairing, SessionsDbConn};
 
@@ -123,6 +126,31 @@ fn room(name: String, room: Option<Room>) -> Result<Template, Flash<Redirect>> {
     Ok(Template::render("room", &context))
 }
 
+#[get("/room/<_name>/updates")]
+fn get_message_updates(_name: String, room: Option<Room>) -> Result<Json<Vec<Message>>, Status> {
+    let room = room.ok_or(Status::Unauthorized)?;
+
+    match room.get_messages_since(0) {
+        Ok(messages) => Ok(Json(messages)),
+        _ => Err(Status::InternalServerError),
+    }
+}
+
+#[post("/room/<_name>/post", format = "json", data = "<message>")]
+fn post(
+    _name: String,
+    room: Option<Room>,
+    session: Session,
+    message: Json<MessageJson>,
+) -> Result<String, Status> {
+    let room = room.ok_or(Status::Unauthorized)?;
+    let message = message.into_inner();
+
+    room.add_message(message.content, session.id(), message.reply_to)
+        .map(|_| "Your message has been saved".into())
+        .map_err(|_| Status::InternalServerError)
+}
+
 #[get("/<file..>", rank = 6)]
 fn static_file(file: PathBuf) -> Result<NamedFile, NotFound<String>> {
     let path = Path::new("static/").join(file);
@@ -140,7 +168,9 @@ fn rocket() -> rocket::Rocket {
                 admin_pane_for_admin,
                 admin_pane_for_non_admin,
                 enter_room,
+                get_message_updates,
                 index,
+                post,
                 room,
                 static_file,
             ],

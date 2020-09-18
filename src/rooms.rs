@@ -16,7 +16,7 @@ use rocket_contrib::databases::rusqlite::{self, Connection};
 use rocket_contrib::*;
 use sha2::{Digest, Sha256};
 
-use crate::messages::Message;
+use crate::messages::{self, Message};
 use crate::sessions::{Session, SessionsDbConn};
 
 /// The path of the rooms database.
@@ -66,6 +66,26 @@ impl Room {
         Message::setup_db(&conn)?;
 
         Ok(())
+    }
+
+    /// Retrieve all messages received since a given timestamp.
+    ///
+    /// The timestamp should be given in the format used by the messages database.
+    pub fn get_messages_since(&self, since: i64) -> rusqlite::Result<Vec<Message>> {
+        let conn = Connection::open(&self.db_path)?;
+        Message::get_since(&conn, since)
+    }
+
+    /// Adds a new message to the room.
+    pub fn add_message(
+        &self,
+        mut content: String,
+        author: String,
+        reply_to: Option<i32>,
+    ) -> rusqlite::Result<()> {
+        let conn = Connection::open(&self.db_path)?;
+        messages::prepare_for_storage(&mut content);
+        Message::add(&conn, content, author, reply_to)
     }
 
     /// Tries to retrieve the database entry associated with a room, given its name.

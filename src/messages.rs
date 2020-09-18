@@ -8,8 +8,29 @@
 
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use pulldown_cmark::html;
+use pulldown_cmark::{Options, Parser};
 use rocket_contrib::databases::rusqlite::{self, Connection};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
+
+/// Sanitizes a user's message and prepares it for being stored.
+///
+/// To prevent attacks like HTML-injection, we should sanitize messages before
+/// sending them to other users. We also want to support CommonMark in messages,
+/// which should be converted to normal HTML.
+///
+/// To avoid doing this operation each time we need to send updates to a user,
+/// we first convert the message to the correct form, then store it like that.
+pub fn prepare_for_storage(message: &mut String) {
+    let mut cmark_options = Options::empty();
+    cmark_options.insert(Options::ENABLE_TABLES);
+
+    let mut unsafe_html = String::new();
+    html::push_html(&mut unsafe_html, Parser::new_ext(message, cmark_options));
+
+    let safe_html = ammonia::clean(&unsafe_html);
+    *message = safe_html;
+}
 
 /// Holds the relevant information of a message.
 #[derive(Debug, Serialize)]
@@ -42,6 +63,21 @@ impl Message {
         .and(Ok(()))
     }
 
+    /// Returns all messages inserted into the database since a given timestamp.
+    ///
+    /// The timestamp should have the format used by the database.
+    pub fn get_since(conn: &Connection, since: i64) -> rusqlite::Result<Vec<Self>> {
+        conn.prepare("SELECT * FROM messages WHERE timestamp >= ?;")?
+            .query_map(&[&since], |row| Message {
+                id: row.get(0),
+                content: row.get(1),
+                timestamp: row.get(2),
+                author: row.get(3),
+                reply_to: row.get(4),
+            })?
+            .collect()
+    }
+
     /// Adds a new message to a given database.
     pub fn add(
         conn: &Connection,
@@ -50,6 +86,8 @@ impl Message {
         reply_to: Option<i32>,
     ) -> rusqlite::Result<()> {
         let timestamp = Message::current_timestamp();
+
+        conn.execute("PRAGMA foreign_keys=ON;", &[])?;
 
         conn.execute(
             "INSERT INTO messages (content, timestamp, author, reply_to) VALUES (?1, ?2, ?3, ?4);",
@@ -68,4 +106,11 @@ impl Message {
             .expect("Error while calculating timestamp")
             .as_millis() as i64
     }
+}
+
+/// The content of the JSON form through which users send messages.
+#[derive(Deserialize)]
+pub struct MessageJson {
+    pub content: String,
+    pub reply_to: Option<i32>,
 }

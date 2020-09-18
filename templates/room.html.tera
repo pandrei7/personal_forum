@@ -9,6 +9,29 @@
 
 <body>
   <h1>Welcome to '{{ name }}'</h1>
+
+  <p id="infoBox"></p>
+
+  <form id="messageForm">
+    <legend>Write your message here. You should be able to use CommonMark.</legend>
+
+    <p><textarea name="content" rows="3" cols="50" required></textarea></p>
+
+    <p>
+      <label for="reply_to">Reply to:</label>
+      <input type="number" name="reply_to" min="1">
+    </p>
+
+    <input type="submit" value="Send!">
+  </form>
+
+  <hr>
+  <hr>
+
+  <div id="message-box"></div>
+
+  <script>const roomName = '{{ name }}';</script>
+  <script src="/js/room.js"></script>
 </body>
 
 </html>

@@ -88,6 +88,11 @@ impl Session {
         self.is_admin
     }
 
+    /// Returns the session id.
+    pub fn id(&self) -> String {
+        self.id.clone()
+    }
+
     /// Sets the session to belong to an administrator.
     ///
     /// It makes the necessary updates to the database,
