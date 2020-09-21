@@ -63,12 +63,15 @@ impl Message {
         .and(Ok(()))
     }
 
-    /// Returns all messages inserted into the database since a given timestamp.
+    /// Returns all messages inserted into the database in the given interval.
     ///
-    /// The timestamp should have the format used by the database.
-    pub fn get_since(conn: &Connection, since: i64) -> rusqlite::Result<Vec<Self>> {
-        conn.prepare("SELECT * FROM messages WHERE timestamp >= ?;")?
-            .query_map(&[&since], |row| Message {
+    /// The left endpoint is exclusive, and the right one is inclusive -
+    /// i.e., (old, new].
+    ///
+    /// The timestamps should have the format used by the database.
+    pub fn get_between(conn: &Connection, old: i64, new: i64) -> rusqlite::Result<Vec<Self>> {
+        conn.prepare("SELECT * FROM messages WHERE ?1 < timestamp AND timestamp <= ?2;")?
+            .query_map(&[&old, &new], |row| Message {
                 id: row.get(0),
                 content: row.get(1),
                 timestamp: row.get(2),
@@ -100,7 +103,7 @@ impl Message {
     ///
     /// Since the server might receive multiple messages quickly, timestamps
     /// should have high enough precision.
-    fn current_timestamp() -> i64 {
+    pub fn current_timestamp() -> i64 {
         SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .expect("Error while calculating timestamp")
@@ -113,4 +116,11 @@ impl Message {
 pub struct MessageJson {
     pub content: String,
     pub reply_to: Option<i32>,
+}
+
+/// The content of the response sent to users upon an update request.
+#[derive(Serialize)]
+pub struct Updates {
+    pub clean_stored: bool,
+    pub messages: Vec<Message>,
 }

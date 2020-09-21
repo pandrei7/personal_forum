@@ -31,10 +31,11 @@ const loadAllMessages = function() {
         }
         return response.json();
     })
-    .then(messages => {
+    .then(updates => {
         const messageBox = document.getElementById('message-box');
         messageBox.innerHTML = "";
 
+        const messages = updates.messages;
         messages.sort((a, b) => b.id - a.id);
         for (const message of messages) {
             messageBox.appendChild(makeBox(message));

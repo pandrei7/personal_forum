@@ -7,6 +7,14 @@
 //! Information about rooms such as their name and password is held
 //! in a special database. Apart from this "central" one, each room
 //! keeps its messages in a separate database.
+//!
+//! The rooms module contributes to the incremental-updates mechanism, which
+//! should help decrease network traffic by avoiding the resending of the
+//! entire message database content repeatedly. To achieve this, the `Room`
+//! struct allows retrieving updates only for given time intervals. Each room
+//! remembers the timestamp of its creation to avoid issues which might appear
+//! when deleting and recreating rooms (for example, an user of the old room
+//! might interact with its cached webpage, which could pose some issues).
 
 use rocket::fairing::{Fairing, Info, Kind};
 use rocket::request::{self, FromRequest, Request};
@@ -16,7 +24,7 @@ use rocket_contrib::databases::rusqlite::{self, Connection};
 use rocket_contrib::*;
 use sha2::{Digest, Sha256};
 
-use crate::messages::{self, Message};
+use crate::messages::{self, Message, Updates};
 use crate::sessions::{Session, SessionsDbConn};
 
 /// The path of the rooms database.
@@ -43,6 +51,7 @@ pub struct Room {
     /// The hashed password used to log into the room.
     password: String,
     db_path: String,
+    creation: i64,
 }
 
 impl Room {
@@ -57,9 +66,10 @@ impl Room {
         hashed_password: String,
         db_path: String,
     ) -> rusqlite::Result<()> {
+        let creation = Message::current_timestamp();
         conn.execute(
-            "INSERT INTO rooms (name, password, db_path) VALUES (?1, ?2, ?3);",
-            &[&name, &hashed_password, &db_path],
+            "INSERT INTO rooms (name, password, db_path, creation) VALUES (?1, ?2, ?3, ?4);",
+            &[&name, &hashed_password, &db_path, &creation],
         )?;
 
         let conn = Connection::open(db_path)?;
@@ -68,12 +78,20 @@ impl Room {
         Ok(())
     }
 
-    /// Retrieve all messages received since a given timestamp.
+    /// Returns the next incremental updates a user should receive when requested.
     ///
-    /// The timestamp should be given in the format used by the messages database.
-    pub fn get_messages_since(&self, since: i64) -> rusqlite::Result<Vec<Message>> {
+    /// The timestamps should be given in the format used by the messages database.
+    pub fn get_updates_between(&self, last_update: i64, now: i64) -> rusqlite::Result<Updates> {
+        // If a user is desynchronized, they should delete the messages of the old room.
+        let clean_stored = self.is_desynchronized(last_update);
+
         let conn = Connection::open(&self.db_path)?;
-        Message::get_since(&conn, since)
+        let messages = Message::get_between(&conn, last_update, now)?;
+
+        Ok(Updates {
+            clean_stored,
+            messages,
+        })
     }
 
     /// Adds a new message to the room.
@@ -88,15 +106,28 @@ impl Room {
         Message::add(&conn, content, author, reply_to)
     }
 
+    /// Checks if a user is desynchronized.
+    ///
+    /// A user is considered "desynchronized" if the last time they received
+    /// updates for this room happened before the room was even created.
+    ///
+    /// This can happen if, for example, a user is logged into a room which
+    /// gets deleted, then recreated. The user might still interact with the
+    /// old version of the webpage, which could lead to weird behaviour.
+    pub fn is_desynchronized(&self, last_update: i64) -> bool {
+        last_update <= self.creation
+    }
+
     /// Tries to retrieve the database entry associated with a room, given its name.
     fn from_db(conn: &Connection, name: &str) -> rusqlite::Result<Room> {
         conn.query_row(
-            "SELECT password, db_path FROM rooms WHERE name = ?;",
+            "SELECT password, db_path, creation FROM rooms WHERE name = ?;",
             &[&name],
             |row| Room {
                 name: String::from(name),
                 password: row.get(0),
                 db_path: row.get(1),
+                creation: row.get(2),
             },
         )
     }
@@ -185,7 +216,8 @@ impl RoomFairing {
             "CREATE TABLE IF NOT EXISTS rooms (
                 name     TEXT PRIMARY KEY,
                 password TEXT NOT NULL,
-                db_path  TEXT NOT NULL
+                db_path  TEXT NOT NULL,
+                creation INTEGER NOT NULL
             );",
             &[],
         )

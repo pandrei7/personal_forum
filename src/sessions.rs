@@ -9,6 +9,11 @@
 //!
 //! This module also implements the "cleaning" behaviour of old sessions,
 //! which removes stale sessions automatically.
+//!
+//! This module contributes to the incremental-updates mechanism, which allows
+//! us to send only those updates which users do not already have. To achieve
+//! this, we store the last time a user received updates for each room they
+//! visit.
 
 use std::ops::Deref;
 use std::thread;
@@ -134,6 +139,29 @@ impl Session {
         )
     }
 
+    /// Sets the given timestamp as the user's last-update time for the given room.
+    pub fn save_room_update(
+        &self,
+        conn: &Connection,
+        name: &str,
+        timestamp: i64,
+    ) -> rusqlite::Result<()> {
+        conn.execute(
+            "INSERT OR REPLACE INTO room_updates (id, name, timestamp) VALUES (?1, ?2, ?3);",
+            &[&self.id, &name, &timestamp],
+        )
+        .and(Ok(()))
+    }
+
+    /// Retrieves the timestamp of the last time a user got updates for a given room.
+    pub fn get_room_update(&self, conn: &Connection, name: &str) -> rusqlite::Result<i64> {
+        conn.query_row(
+            "SELECT timestamp FROM room_updates WHERE id = ?1 AND name = ?2;",
+            &[&self.id, &name],
+            |row| row.get(0),
+        )
+    }
+
     /// Keeps a session "alive" by updating its timestamp.
     fn keep_alive(&mut self, conn: &Connection) -> rusqlite::Result<()> {
         self.last_update = Session::current_timestamp();
@@ -225,26 +253,30 @@ impl SessionFairing {
     fn setup_db() -> rusqlite::Result<()> {
         let conn = Connection::open(DB_PATH)?;
 
-        conn.execute("DROP TABLE IF EXISTS sessions;", &[])?;
-        conn.execute("DROP TABLE IF EXISTS room_attempts;", &[])?;
+        conn.execute_batch(
+            "DROP TABLE IF EXISTS sessions;
+            DROP TABLE IF EXISTS room_attempts;
+            DROP TABLE IF EXISTS room_updates;
 
-        conn.execute(
-            "CREATE TABLE IF NOT EXISTS sessions (
+            CREATE TABLE IF NOT EXISTS sessions (
                 id          TEXT PRIMARY KEY,
                 last_update INTEGER NOT NULL,
                 is_admin    INTEGER NOT NULL
-            );",
-            &[],
-        )?;
-        conn.execute(
-            "CREATE TABLE IF NOT EXISTS room_attempts (
+            );
+            CREATE TABLE IF NOT EXISTS room_attempts (
                 id       TEXT NOT NULL,
                 name     TEXT NOT NULL,
                 password TEXT NOT NULL,
                 PRIMARY KEY (id, name),
                 FOREIGN KEY (id) REFERENCES sessions(id) ON DELETE CASCADE
+            );
+            CREATE TABLE IF NOT EXISTS room_updates (
+                id        TEXT NOT NULL,
+                name      TEXT NOT NULL,
+                timestamp INTEGER NOT NULL,
+                PRIMARY KEY (id, name),
+                FOREIGN KEY (id) REFERENCES sessions(id) ON DELETE CASCADE
             );",
-            &[],
         )
         .and(Ok(()))
     }

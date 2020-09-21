@@ -18,7 +18,7 @@ use rocket_contrib::json::Json;
 use rocket_contrib::templates::Template;
 
 use admins::{Admin, AdminLogin, AdminsDbConn};
-use messages::{Message, MessageJson};
+use messages::{Message, MessageJson, Updates};
 use rooms::{Room, RoomFairing, RoomLogin, RoomsDbConn};
 use sessions::{Session, SessionFairing, SessionsDbConn};
 
@@ -126,25 +126,46 @@ fn room(name: String, room: Option<Room>) -> Result<Template, Flash<Redirect>> {
     Ok(Template::render("room", &context))
 }
 
-#[get("/room/<_name>/updates")]
-fn get_message_updates(_name: String, room: Option<Room>) -> Result<Json<Vec<Message>>, Status> {
-    let room = room.ok_or(Status::Unauthorized)?;
-
-    match room.get_messages_since(0) {
-        Ok(messages) => Ok(Json(messages)),
-        _ => Err(Status::InternalServerError),
-    }
-}
-
-#[post("/room/<_name>/post", format = "json", data = "<message>")]
-fn post(
-    _name: String,
+#[get("/room/<name>/updates")]
+fn get_message_updates(
+    name: String,
     room: Option<Room>,
     session: Session,
+    conn: SessionsDbConn,
+) -> Result<Json<Updates>, Status> {
+    let room = room.ok_or(Status::Unauthorized)?;
+
+    let last_update = session.get_room_update(&conn, &name).unwrap_or(0);
+    let now = Message::current_timestamp();
+
+    let updates = room
+        .get_updates_between(last_update, now)
+        .map_err(|_| Status::InternalServerError)?;
+    session
+        .save_room_update(&conn, &name, now)
+        .map_err(|_| Status::InternalServerError)?;
+
+    Ok(Json(updates))
+}
+
+#[post("/room/<name>/post", format = "json", data = "<message>")]
+fn post(
+    name: String,
+    room: Option<Room>,
     message: Json<MessageJson>,
+    session: Session,
+    conn: SessionsDbConn,
 ) -> Result<String, Status> {
     let room = room.ok_or(Status::Unauthorized)?;
     let message = message.into_inner();
+
+    // Users might not know what they are replying to when desynchronized.
+    let last_update = session
+        .get_room_update(&conn, &name)
+        .map_err(|_| Status::InternalServerError)?;
+    if room.is_desynchronized(last_update) {
+        return Ok("This room seems to have been deleted. Try refreshing the page.".into());
+    }
 
     room.add_message(message.content, session.id(), message.reply_to)
         .map(|_| "Your message has been saved".into())
