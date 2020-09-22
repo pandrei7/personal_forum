@@ -16,12 +16,15 @@
 //! when deleting and recreating rooms (for example, an user of the old room
 //! might interact with its cached webpage, which could pose some issues).
 
+use std::fs;
+
 use rocket::fairing::{Fairing, Info, Kind};
 use rocket::request::{self, FromRequest, Request};
 use rocket::Rocket;
 use rocket::*;
 use rocket_contrib::databases::rusqlite::{self, Connection};
 use rocket_contrib::*;
+use serde::Deserialize;
 use sha2::{Digest, Sha256};
 
 use crate::messages::{self, Message, Updates};
@@ -76,6 +79,45 @@ impl Room {
         Message::setup_db(&conn)?;
 
         Ok(())
+    }
+
+    /// Deletes a room from the database, also removing its message database.
+    ///
+    /// If the operation fails, the reason is returned as a readable string.
+    pub fn delete_room(conn: &Connection, name: &str) -> Result<(), String> {
+        let db_path: String = conn
+            .query_row(
+                "SELECT db_path FROM rooms WHERE name = ?;",
+                &[&name],
+                |row| row.get(0),
+            )
+            .map_err(|_| "Error while retrieving db_path.")?;
+
+        match conn.execute("DELETE FROM rooms WHERE name = ?;", &[&name]) {
+            Ok(1) => fs::remove_file(db_path)
+                .map_err(|_| "Error while deleting messages database.".into()),
+            _ => Err("Error while deleting from database.".into()),
+        }
+    }
+
+    /// Returns a list with the names of all the rooms stored in the database.
+    pub fn active_rooms(conn: &Connection) -> rusqlite::Result<Vec<String>> {
+        conn.prepare("SELECT name FROM rooms;")?
+            .query_map(&[], |row| row.get(0))?
+            .collect()
+    }
+
+    /// Changes the password of the given room.
+    pub fn change_password(
+        conn: &Connection,
+        name: &str,
+        hashed_password: &str,
+    ) -> rusqlite::Result<()> {
+        conn.execute(
+            "UPDATE rooms SET password = ?1 WHERE name = ?2;",
+            &[&hashed_password, &name],
+        )
+        .and(Ok(()))
     }
 
     /// Returns the next incremental updates a user should receive when requested.
@@ -245,8 +287,8 @@ impl Fairing for RoomFairing {
     }
 }
 
-/// The content of a form used to log into a room.
-#[derive(FromForm)]
+/// The content of a form used to hold login credentials for a room.
+#[derive(Deserialize, FromForm)]
 pub struct RoomLogin {
     pub name: String,
     /// The plaintext password of the room.
@@ -255,7 +297,7 @@ pub struct RoomLogin {
 
 impl RoomLogin {
     /// Checks if the form contains the correct credentials to log into a room.
-    pub fn is_valid(&self, conn: &Connection) -> rusqlite::Result<bool> {
+    pub fn can_log_in(&self, conn: &Connection) -> rusqlite::Result<bool> {
         let hashed_password = hash_password(&self.password);
         let room = Room::from_db(&conn, &self.name)?;
         Ok(room.valid_password(&hashed_password))

@@ -87,6 +87,75 @@ fn admin_pane_for_non_admin() -> Flash<Redirect> {
     )
 }
 
+#[get("/session_count")]
+fn session_count(_admin: Admin, conn: SessionsDbConn) -> Result<String, Status> {
+    Session::count_sessions(&conn)
+        .map(|num| num.to_string())
+        .map_err(|_| Status::InternalServerError)
+}
+
+#[get("/active_rooms")]
+fn active_rooms(_admin: Admin, conn: RoomsDbConn) -> Result<Json<Vec<String>>, Status> {
+    Room::active_rooms(&conn)
+        .map(Json)
+        .map_err(|_| Status::InternalServerError)
+}
+
+#[post("/create_room", format = "json", data = "<room>")]
+fn create_room(_admin: Admin, room: Json<RoomLogin>, conn: RoomsDbConn) -> String {
+    // Validate the input.
+    let valid = |ch: char| ch.is_ascii_alphanumeric() || ch == '_' || ch == '-';
+    if room.name.is_empty() || !room.name.chars().all(valid) {
+        return "The room name contains invalid characters.".into();
+    }
+    if room.password.is_empty() {
+        return "The password cannot be empty.".into();
+    }
+
+    let name = &room.name;
+    let hashed_password = rooms::hash_password(&room.password);
+    let db_path = {
+        let mut path = PathBuf::from("db");
+        path.push("rooms");
+        path.push(name.clone());
+        path.set_extension("db");
+
+        match path.to_str() {
+            Some(path) => path.into(),
+            _ => return "There was an error with the database path.".into(),
+        }
+    };
+
+    match Room::create_room(&conn, name.clone(), hashed_password, db_path) {
+        Ok(_) => format!("Created room {}.", name),
+        _ => "Could not create the room.".into(),
+    }
+}
+
+#[delete("/delete_room", data = "<name>")]
+fn delete_room(_admin: Admin, name: String, conn: RoomsDbConn) -> String {
+    match Room::delete_room(&conn, &name) {
+        Ok(_) => format!("Room {} deleted successfully.", name),
+        Err(reason) => reason,
+    }
+}
+
+#[post("/change_room_password", format = "json", data = "<form>")]
+fn change_room_password(_admin: Admin, form: Json<RoomLogin>, conn: RoomsDbConn) -> String {
+    // Validate the input.
+    if form.password.is_empty() {
+        return "The password cannot be empty.".into();
+    }
+
+    let name = &form.name;
+    let hashed_password = rooms::hash_password(&form.password);
+
+    match Room::change_password(&conn, &name, &hashed_password) {
+        Ok(_) => "The password has been changed.".into(),
+        _ => "There was an error.".into(),
+    }
+}
+
 #[post("/enter_room", data = "<login>")]
 fn enter_room(
     login: Form<RoomLogin>,
@@ -94,7 +163,7 @@ fn enter_room(
     session: Session,
     sessions_conn: SessionsDbConn,
 ) -> Result<Redirect, Flash<Redirect>> {
-    if !login.is_valid(&rooms_conn).unwrap_or(false) {
+    if !login.can_log_in(&rooms_conn).unwrap_or(false) {
         return Err(Flash::error(
             Redirect::to("/"),
             "Credentials are not valid.",
@@ -183,16 +252,21 @@ fn rocket() -> rocket::Rocket {
         .mount(
             "/",
             routes![
+                active_rooms,
                 admin_login,
                 admin_login_for_admin,
                 admin_login_for_non_admin,
                 admin_pane_for_admin,
                 admin_pane_for_non_admin,
+                change_room_password,
+                create_room,
+                delete_room,
                 enter_room,
                 get_message_updates,
                 index,
                 post,
                 room,
+                session_count,
                 static_file,
             ],
         )

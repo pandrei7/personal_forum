@@ -88,6 +88,11 @@ pub struct Session {
 }
 
 impl Session {
+    /// Counts the number of sessions in the database.
+    pub fn count_sessions(conn: &Connection) -> rusqlite::Result<u32> {
+        conn.query_row("SELECT COUNT(*) FROM sessions;", &[], |row| row.get(0))
+    }
+
     /// Checks if the session belongs to an administrator.
     pub fn is_admin(&self) -> bool {
         self.is_admin

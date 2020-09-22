@@ -11,6 +11,32 @@
   <h1>Admin pane</h1>
 
   <p>You are logged in as admin.</p>
+
+  <h2>Server status</h2>
+  <div id="serverStatus"></div>
+  <hr>
+
+  <h2>Rooms</h2>
+  <div>
+    <p id="createRoomStatus"></p>
+
+    <form id="createRoomForm">
+      <legend>Create a new room.</legend>
+
+      <label for="name">Name</label>
+      <input type="text" name="name" required>
+
+      <label for="password">Password</label>
+      <input type="text" name="password" required>
+
+      <input type="submit" value="Create!">
+    </form>
+  </div>
+
+  <div id="roomsBox"></div>
+  <hr>
+
+  <script src="/js/admin_pane.js"></script>
 </body>
 
 </html>
