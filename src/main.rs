@@ -10,7 +10,6 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use rocket::http::Status;
-use rocket::request::Form;
 use rocket::response::status::NotFound;
 use rocket::response::{Flash, NamedFile, Redirect};
 use rocket::*;
@@ -35,10 +34,10 @@ fn admin_login_for_admin(_admin: Admin) -> Flash<Redirect> {
     )
 }
 
-#[post("/admin_login", data = "<login>")]
+#[post("/admin_login", format = "json", data = "<login>")]
 fn admin_login(
     mut session: Session,
-    login: Form<AdminLogin>,
+    login: Json<AdminLogin>,
     sessions_conn: SessionsDbConn,
     admins_conn: AdminsDbConn,
 ) -> Result<Redirect, Flash<Redirect>> {
@@ -156,9 +155,9 @@ fn change_room_password(_admin: Admin, form: Json<RoomLogin>, conn: RoomsDbConn)
     }
 }
 
-#[post("/enter_room", data = "<login>")]
+#[post("/enter_room", format = "json", data = "<login>")]
 fn enter_room(
-    login: Form<RoomLogin>,
+    login: Json<RoomLogin>,
     rooms_conn: RoomsDbConn,
     session: Session,
     sessions_conn: SessionsDbConn,

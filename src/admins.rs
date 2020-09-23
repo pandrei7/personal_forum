@@ -8,9 +8,9 @@
 //! administrators, which is done through a login form.
 
 use rocket::request::{FromRequest, Outcome, Request};
-use rocket::*;
 use rocket_contrib::databases::rusqlite::{self, Connection};
 use rocket_contrib::*;
+use serde::Deserialize;
 use sha2::{Digest, Sha256};
 
 use crate::sessions::Session;
@@ -40,7 +40,7 @@ impl<'a, 'r> FromRequest<'a, 'r> for Admin {
 pub struct AdminsDbConn(Connection);
 
 /// The content of a form used to log in administrators.
-#[derive(FromForm)]
+#[derive(Deserialize)]
 pub struct AdminLogin {
     username: String,
     password: String,

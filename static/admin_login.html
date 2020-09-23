@@ -10,15 +10,17 @@
 <body>
   <h1>Admin login</h1>
 
-  <form method="POST">
+  <form id="loginForm">
     <label for="username">Username: </label>
-    <input type="text" name="username">
+    <input type="text" name="username" required>
 
     <label for="password">Password: </label>
-    <input type="password" name="password">
+    <input type="password" name="password" required>
 
     <input type="submit" value="Login">
   </form>
+
+  <script src="/js/admin_login.js"></script>
 </body>
 
 </html>

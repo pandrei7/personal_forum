@@ -21,7 +21,6 @@ use std::fs;
 use rocket::fairing::{Fairing, Info, Kind};
 use rocket::request::{self, FromRequest, Request};
 use rocket::Rocket;
-use rocket::*;
 use rocket_contrib::databases::rusqlite::{self, Connection};
 use rocket_contrib::*;
 use serde::Deserialize;
@@ -288,7 +287,7 @@ impl Fairing for RoomFairing {
 }
 
 /// The content of a form used to hold login credentials for a room.
-#[derive(Deserialize, FromForm)]
+#[derive(Deserialize)]
 pub struct RoomLogin {
     pub name: String,
     /// The plaintext password of the room.
