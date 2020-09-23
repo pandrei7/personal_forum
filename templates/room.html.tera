@@ -4,29 +4,24 @@
 
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+
   <title>Room '{{ name }}'</title>
+
+  <link href="/css/room.css" rel="stylesheet">
 </head>
 
 <body>
   <h1>Welcome to '{{ name }}'</h1>
 
-  <p id="infoBox"></p>
+  <div id="newThreadBox">
+    <p id="newThreadInfoBox"></p>
 
-  <form id="messageForm">
-    <legend>Write your message here. You should be able to use CommonMark.</legend>
-
-    <p><textarea name="content" rows="3" cols="50" required></textarea></p>
-
-    <p>
-      <label for="reply_to">Reply to:</label>
-      <input type="number" name="reply_to" min="1">
-    </p>
-
-    <input type="submit" value="Send!">
-  </form>
-
-  <hr>
-  <hr>
+    <form id="newThreadForm">
+      <textarea name="content" placeholder="Type a new thread message here." required></textarea>
+      <input type="submit" value="Start the thread">
+    </form>
+  </div>
 
   <div id="message-box"></div>
 

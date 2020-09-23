@@ -1,0 +1,111 @@
+* {
+    margin: 0;
+    padding: 0;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+@media screen and (min-width: 800px) {
+    body {
+        padding: 0 15rem;
+    }
+}
+
+@media screen and (max-width: 800px) {
+    body {
+        padding: 0 0.5rem;
+    }
+}
+
+h1 {
+    font-size: calc(1.5rem + 3vw);
+}
+
+p {
+    font-size: calc(1.1rem + 0.3vw);
+}
+
+input[type=submit] {
+    font-size: calc(1rem + 0.1vw);
+}
+
+textarea {
+    font-size: calc(1rem + 0.1vw);
+}
+
+#newThreadBox {
+    background: orangered;
+    margin-top: 0.5rem;
+    margin-bottom: 1rem;
+    padding: 0.3rem 1rem;
+    border-radius: 5px;
+}
+
+#newThreadForm {
+    display: flex;
+}
+
+#newThreadForm textarea {
+    flex: 8;
+}
+
+#newThreadForm input {
+    flex: 2;
+}
+
+.thread-box {
+    margin-bottom: 1rem;
+}
+
+.replies-box {
+    overflow: auto;
+    max-height: 420px;
+    margin-left: 1rem;
+}
+
+.send-box {
+    background: dodgerblue;
+    width: 100%;
+    margin-bottom: 0.1rem;
+    padding: 0.3rem;
+    border-radius: 5px;
+}
+
+.send-box textarea {
+    width: 100%;
+    resize: vertical;
+}
+
+.send-box input[type=submit] {
+    width: 100%;
+}
+
+.message {
+    background: cadetblue;
+    overflow: auto;
+    margin-bottom: 0.1rem;
+    padding: 0.5rem 0.5rem;
+    border-radius: 5px;
+}
+
+.message img {
+    max-width: 100%;
+}
+
+.threadMessage {
+    background: orangered;
+    margin-bottom: 0;
+}
+
+.messageId {
+    display: inline;
+    vertical-align: top;
+    font-weight: bold;
+}
+
+.messageContent {
+    display: inline-block;
+    margin-left: 1rem;
+}
