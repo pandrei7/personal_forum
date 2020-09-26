@@ -1,6 +1,7 @@
 #![feature(proc_macro_hygiene, decl_macro)]
 
 mod admins;
+mod db;
 mod messages;
 mod rooms;
 mod sessions;
@@ -16,10 +17,11 @@ use rocket::*;
 use rocket_contrib::json::Json;
 use rocket_contrib::templates::Template;
 
-use admins::{Admin, AdminLogin, AdminsDbConn};
+use admins::{Admin, AdminLogin};
+use db::{DbConn, DbInitFairing};
 use messages::{Message, MessageJson, Updates};
-use rooms::{Room, RoomFairing, RoomLogin, RoomsDbConn};
-use sessions::{Session, SessionFairing, SessionsDbConn};
+use rooms::{Room, RoomLogin};
+use sessions::{Session, SessionFairing};
 
 #[get("/")]
 fn index() -> Result<NamedFile, NotFound<String>> {
@@ -38,10 +40,9 @@ fn admin_login_for_admin(_admin: Admin) -> Flash<Redirect> {
 fn admin_login(
     mut session: Session,
     login: Json<AdminLogin>,
-    sessions_conn: SessionsDbConn,
-    admins_conn: AdminsDbConn,
+    conn: DbConn,
 ) -> Result<Redirect, Flash<Redirect>> {
-    let valid = match login.is_valid(&*admins_conn) {
+    let valid = match login.is_valid(&conn) {
         Ok(valid) => valid,
         _ => {
             return Err(Flash::error(
@@ -52,7 +53,7 @@ fn admin_login(
     };
 
     if valid {
-        if session.make_admin(&*sessions_conn) {
+        if session.make_admin(&conn) {
             Ok(Redirect::to("/admin_pane"))
         } else {
             Err(Flash::error(
@@ -87,21 +88,21 @@ fn admin_pane_for_non_admin() -> Flash<Redirect> {
 }
 
 #[get("/session_count")]
-fn session_count(_admin: Admin, conn: SessionsDbConn) -> Result<String, Status> {
+fn session_count(_admin: Admin, conn: DbConn) -> Result<String, Status> {
     Session::count_sessions(&conn)
         .map(|num| num.to_string())
         .map_err(|_| Status::InternalServerError)
 }
 
 #[get("/active_rooms")]
-fn active_rooms(_admin: Admin, conn: RoomsDbConn) -> Result<Json<Vec<String>>, Status> {
+fn active_rooms(_admin: Admin, conn: DbConn) -> Result<Json<Vec<String>>, Status> {
     Room::active_rooms(&conn)
         .map(Json)
         .map_err(|_| Status::InternalServerError)
 }
 
 #[post("/create_room", format = "json", data = "<room>")]
-fn create_room(_admin: Admin, room: Json<RoomLogin>, conn: RoomsDbConn) -> String {
+fn create_room(_admin: Admin, room: Json<RoomLogin>, conn: DbConn) -> String {
     // Validate the input.
     let valid = |ch: char| ch.is_ascii_alphanumeric() || ch == '_' || ch == '-';
     if room.name.is_empty() || !room.name.chars().all(valid) {
@@ -113,26 +114,15 @@ fn create_room(_admin: Admin, room: Json<RoomLogin>, conn: RoomsDbConn) -> Strin
 
     let name = &room.name;
     let hashed_password = rooms::hash_password(&room.password);
-    let db_path = {
-        let mut path = PathBuf::from("db");
-        path.push("rooms");
-        path.push(name.clone());
-        path.set_extension("db");
 
-        match path.to_str() {
-            Some(path) => path.into(),
-            _ => return "There was an error with the database path.".into(),
-        }
-    };
-
-    match Room::create_room(&conn, name.clone(), hashed_password, db_path) {
+    match Room::create_room(&conn, name.clone(), hashed_password) {
         Ok(_) => format!("Created room {}.", name),
         _ => "Could not create the room.".into(),
     }
 }
 
 #[delete("/delete_room", data = "<name>")]
-fn delete_room(_admin: Admin, name: String, conn: RoomsDbConn) -> String {
+fn delete_room(_admin: Admin, name: String, conn: DbConn) -> String {
     match Room::delete_room(&conn, &name) {
         Ok(_) => format!("Room {} deleted successfully.", name),
         Err(reason) => reason,
@@ -140,7 +130,7 @@ fn delete_room(_admin: Admin, name: String, conn: RoomsDbConn) -> String {
 }
 
 #[post("/change_room_password", format = "json", data = "<form>")]
-fn change_room_password(_admin: Admin, form: Json<RoomLogin>, conn: RoomsDbConn) -> String {
+fn change_room_password(_admin: Admin, form: Json<RoomLogin>, conn: DbConn) -> String {
     // Validate the input.
     if form.password.is_empty() {
         return "The password cannot be empty.".into();
@@ -158,11 +148,10 @@ fn change_room_password(_admin: Admin, form: Json<RoomLogin>, conn: RoomsDbConn)
 #[post("/enter_room", format = "json", data = "<login>")]
 fn enter_room(
     login: Json<RoomLogin>,
-    rooms_conn: RoomsDbConn,
     session: Session,
-    sessions_conn: SessionsDbConn,
+    conn: DbConn,
 ) -> Result<Redirect, Flash<Redirect>> {
-    if !login.can_log_in(&rooms_conn).unwrap_or(false) {
+    if !login.can_log_in(&conn).unwrap_or(false) {
         return Err(Flash::error(
             Redirect::to("/"),
             "Credentials are not valid.",
@@ -170,11 +159,7 @@ fn enter_room(
     }
 
     session
-        .save_room_attempt(
-            &sessions_conn,
-            &login.name,
-            &rooms::hash_password(&login.password),
-        )
+        .save_room_attempt(&conn, &login.name, &rooms::hash_password(&login.password))
         .map_err(|_| Flash::error(Redirect::to("/"), "Could not save your login attempt."))
         .map(|_| Redirect::to(format!("/room/{}", login.name)))
 }
@@ -199,7 +184,7 @@ fn get_message_updates(
     name: String,
     room: Option<Room>,
     session: Session,
-    conn: SessionsDbConn,
+    conn: DbConn,
 ) -> Result<Json<Updates>, Status> {
     let room = room.ok_or(Status::Unauthorized)?;
 
@@ -207,7 +192,7 @@ fn get_message_updates(
     let now = Message::current_timestamp();
 
     let updates = room
-        .get_updates_between(last_update, now)
+        .get_updates_between(&conn, last_update, now)
         .map_err(|_| Status::InternalServerError)?;
     session
         .save_room_update(&conn, &name, now)
@@ -216,26 +201,18 @@ fn get_message_updates(
     Ok(Json(updates))
 }
 
-#[post("/room/<name>/post", format = "json", data = "<message>")]
+#[post("/room/<_name>/post", format = "json", data = "<message>")]
 fn post(
-    name: String,
+    _name: String,
     room: Option<Room>,
     message: Json<MessageJson>,
     session: Session,
-    conn: SessionsDbConn,
+    conn: DbConn,
 ) -> Result<String, Status> {
     let room = room.ok_or(Status::Unauthorized)?;
     let message = message.into_inner();
 
-    // Users might not know what they are replying to when desynchronized.
-    let last_update = session
-        .get_room_update(&conn, &name)
-        .map_err(|_| Status::InternalServerError)?;
-    if room.is_desynchronized(last_update) {
-        return Ok("This room seems to have been deleted. Try refreshing the page.".into());
-    }
-
-    room.add_message(message.content, session.id(), message.reply_to)
+    room.add_message(&conn, message.content, session.id(), message.reply_to)
         .map(|_| "Your message has been saved".into())
         .map_err(|_| Status::InternalServerError)
 }
@@ -270,11 +247,9 @@ fn rocket() -> rocket::Rocket {
             ],
         )
         .attach(Template::fairing())
+        .attach(DbConn::fairing())
+        .attach(DbInitFairing::default())
         .attach(SessionFairing::default())
-        .attach(RoomFairing::default())
-        .attach(AdminsDbConn::fairing())
-        .attach(SessionsDbConn::fairing())
-        .attach(RoomsDbConn::fairing())
 }
 
 fn main() {

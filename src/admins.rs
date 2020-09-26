@@ -1,15 +1,14 @@
 //! Module for working with administrator accounts.
 //!
-//! Administrator credentials are held in a database.
-//! This database should be populated from outside the program,
-//! which only accesses it.
+//! This module provides data structures and request guards for
+//! authenticating and interacting with administrators.
 //!
-//! This module also contains types used to authenticate users as
-//! administrators, which is done through a login form.
+//! Administrator credentials are held in the `admins` table, which
+//! should be populated from outside the program, since the server
+//! only reads its contents.
 
 use rocket::request::{FromRequest, Outcome, Request};
 use rocket_contrib::databases::rusqlite::{self, Connection};
-use rocket_contrib::*;
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
 
@@ -32,12 +31,6 @@ impl<'a, 'r> FromRequest<'a, 'r> for Admin {
         }
     }
 }
-
-/// Holds a connection to the admin database.
-///
-/// It's a type needed to interact with Rocket.
-#[database("admins")]
-pub struct AdminsDbConn(Connection);
 
 /// The content of a form used to log in administrators.
 #[derive(Deserialize)]

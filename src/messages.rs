@@ -1,7 +1,7 @@
 //! Module for working with messages.
 //!
-//! Messages are sent to/from users and are held in their own database.
-//! This module provides types which allow you to interact with those databases.
+//! Messages of a room are sent to/from users and are held in their own table.
+//! This module provides types which allow you to interact with such a table.
 //!
 //! There are two "types" of messages conceptually: those which start a new
 //! thread, and replies to the main thread message.
@@ -47,59 +47,70 @@ pub struct Message {
 }
 
 impl Message {
-    /// Initializes the database which holds messages.
-    pub fn setup_db(conn: &Connection) -> rusqlite::Result<()> {
-        conn.execute(
-            "CREATE TABLE IF NOT EXISTS messages (
+    /// Initializes the table which holds messages.
+    pub fn setup_table(conn: &Connection, table: &str) -> rusqlite::Result<()> {
+        let sql = format!(
+            "CREATE TABLE IF NOT EXISTS {table} (
                 id        INTEGER PRIMARY KEY AUTOINCREMENT,
                 content   TEXT NOT NULL,
                 timestamp INTEGER NOT NULL,
                 author    TEXT,
                 reply_to  INTEGER,
-                FOREIGN KEY (reply_to) REFERENCES messages(id)
+                FOREIGN KEY (author) REFERENCES sessions(id) ON DELETE SET NULL,
+                FOREIGN KEY (reply_to) REFERENCES {table}(id)
             );",
-            &[],
-        )
-        .and(Ok(()))
+            table = table
+        );
+        conn.execute(&sql, &[]).and(Ok(()))
     }
 
-    /// Returns all messages inserted into the database in the given interval.
+    /// Returns all messages inserted into the table in the given interval.
     ///
     /// The left endpoint is exclusive, and the right one is inclusive -
     /// i.e., (old, new].
     ///
-    /// The timestamps should have the format used by the database.
-    pub fn get_between(conn: &Connection, old: i64, new: i64) -> rusqlite::Result<Vec<Self>> {
-        conn.prepare("SELECT * FROM messages WHERE ?1 < timestamp AND timestamp <= ?2;")?
-            .query_map(&[&old, &new], |row| Message {
-                id: row.get(0),
-                content: row.get(1),
-                timestamp: row.get(2),
-                author: row.get(3),
-                reply_to: row.get(4),
-            })?
-            .collect()
+    /// The timestamps should have the format used by the table.
+    pub fn get_between(
+        conn: &Connection,
+        table: &str,
+        old: i64,
+        new: i64,
+    ) -> rusqlite::Result<Vec<Self>> {
+        conn.prepare(&format!(
+            "SELECT * FROM {} WHERE ?1 < timestamp AND timestamp <= ?2;",
+            table
+        ))?
+        .query_map(&[&old, &new], |row| Message {
+            id: row.get(0),
+            content: row.get(1),
+            timestamp: row.get(2),
+            author: row.get(3),
+            reply_to: row.get(4),
+        })?
+        .collect()
     }
 
-    /// Adds a new message to a given database.
+    /// Adds a new message to a given table.
     pub fn add(
         conn: &Connection,
+        table: &str,
         content: String,
         author: String,
         reply_to: Option<i32>,
     ) -> rusqlite::Result<()> {
         let timestamp = Message::current_timestamp();
 
-        conn.execute("PRAGMA foreign_keys=ON;", &[])?;
-
         conn.execute(
-            "INSERT INTO messages (content, timestamp, author, reply_to) VALUES (?1, ?2, ?3, ?4);",
+            &format!(
+                "INSERT INTO {} (content, timestamp, author, reply_to) VALUES (?1, ?2, ?3, ?4);",
+                table
+            ),
             &[&content, &timestamp, &author, &reply_to],
         )
         .and(Ok(()))
     }
 
-    /// Returns the current timestamp, as it should be saved in the database.
+    /// Returns the current timestamp, as it should be saved in the table.
     ///
     /// Since the server might receive multiple messages quickly, timestamps
     /// should have high enough precision.

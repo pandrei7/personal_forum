@@ -1,11 +1,7 @@
 //! Module for working with user sessions.
 //!
-//! Sessions are stored in a database, and are handled mostly server-side.
-//! Users receive cookies which identify their session, but do not contain
-//! other information themselves.
-//!
-//! This module contains types which allow you to interact with user sessions,
-//! as well as fairings which make database interaction possible.
+//! Sessions are handled mostly server-side. Users receive cookies which
+//! identify their session, but do not contain other information themselves.
 //!
 //! This module also implements the "cleaning" behaviour of old sessions,
 //! which removes stale sessions automatically.
@@ -15,7 +11,6 @@
 //! this, we store the last time a user received updates for each room they
 //! visit.
 
-use std::ops::Deref;
 use std::thread;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
@@ -27,60 +22,15 @@ use rocket::request::{FromRequest, Outcome, Request};
 use rocket::{Data, Rocket};
 use rocket_contrib::databases::rusqlite;
 use rocket_contrib::databases::rusqlite::Connection;
-use rocket_contrib::*;
 
-/// Holds a connection to the sessions database.
-pub struct SessionsDbConn(HelperDbConn);
-
-/// A helper-type which holds a connection to the sessions database.
-///
-/// It's a type needed to interact with Rocket.
-/// It's required because connections to the sessions database have setup
-/// requirements which we address manually.
-#[database("sessions")]
-struct HelperDbConn(Connection);
-
-impl SessionsDbConn {
-    /// Returns a fairing which correctly sets up connections to the sessions database.
-    pub fn fairing() -> impl Fairing {
-        HelperDbConn::fairing()
-    }
-}
-
-impl<'a, 'r> FromRequest<'a, 'r> for SessionsDbConn {
-    type Error = ();
-
-    /// Connections to the sessions database should enforce foreign key
-    /// constraints. Because we use SQLite, we have to manually activate these
-    /// checks with a pragma statement. This statement only applies to one
-    /// connection, so each connection should be set up individually.
-    fn from_request(req: &'a Request<'r>) -> Outcome<SessionsDbConn, Self::Error> {
-        let conn = req.guard::<HelperDbConn>()?;
-
-        match conn.execute("PRAGMA foreign_keys=ON;", &[]) {
-            Ok(_) => Outcome::Success(SessionsDbConn(conn)),
-            _ => Outcome::Failure((rocket::http::Status::InternalServerError, ())),
-        }
-    }
-}
-
-impl Deref for SessionsDbConn {
-    type Target = Connection;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-/// The path of the database holding session info.
-const DB_PATH: &str = "db/sessions.db";
+use crate::db::DbConn;
 
 /// The name of the cookie used to hold a session's id.
 const SESSION_ID_COOKIE: &str = "session_id";
 
 /// Holds relevant information about a session.
 ///
-/// It's closely tied to a row in the sessions database.
+/// It's closely tied to a row in the sessions table.
 pub struct Session {
     id: String,
     last_update: i64,
@@ -227,15 +177,14 @@ impl<'a, 'r> FromRequest<'a, 'r> for Session {
     type Error = ();
 
     /// A `Session` is retrieved from a request by using the `SESSION_ID_COOKIE`
-    /// cookie to identify an existing entry in the sessions database.
+    /// cookie to identify an existing entry in the sessions table.
     fn from_request(req: &'a Request<'r>) -> Outcome<Session, Self::Error> {
-        let conn = req.guard::<SessionsDbConn>()?;
-
         let session_id = match req.cookies().get_private(SESSION_ID_COOKIE) {
             None => return Outcome::Forward(()),
             Some(cookie) => cookie.value().parse::<String>().unwrap(),
         };
 
+        let conn = req.guard::<DbConn>()?;
         if let Ok(session) = Session::from_db(&conn, &session_id) {
             Outcome::Success(session)
         } else {
@@ -244,62 +193,20 @@ impl<'a, 'r> FromRequest<'a, 'r> for Session {
     }
 }
 
-/// A fairing used to make interaction with the sessions database possible.
+/// A fairing used to make interaction with sessions possible.
 #[derive(Default)]
 pub struct SessionFairing;
 
 impl SessionFairing {
-    /// Makes sure we can interact with the sessions database.
-    ///
-    /// The database should be empty on each run of the program.
-    /// In case the file does not exist, or is empty, the table should
-    /// be created. To achieve this easily, we destroy the table on each run,
-    /// and create it from scratch.
-    fn setup_db() -> rusqlite::Result<()> {
-        let conn = Connection::open(DB_PATH)?;
-
-        conn.execute_batch(
-            "DROP TABLE IF EXISTS sessions;
-            DROP TABLE IF EXISTS room_attempts;
-            DROP TABLE IF EXISTS room_updates;
-
-            CREATE TABLE IF NOT EXISTS sessions (
-                id          TEXT PRIMARY KEY,
-                last_update INTEGER NOT NULL,
-                is_admin    INTEGER NOT NULL
-            );
-            CREATE TABLE IF NOT EXISTS room_attempts (
-                id       TEXT NOT NULL,
-                name     TEXT NOT NULL,
-                password TEXT NOT NULL,
-                PRIMARY KEY (id, name),
-                FOREIGN KEY (id) REFERENCES sessions(id) ON DELETE CASCADE
-            );
-            CREATE TABLE IF NOT EXISTS room_updates (
-                id        TEXT NOT NULL,
-                name      TEXT NOT NULL,
-                timestamp INTEGER NOT NULL,
-                PRIMARY KEY (id, name),
-                FOREIGN KEY (id) REFERENCES sessions(id) ON DELETE CASCADE
-            );",
-        )
-        .and(Ok(()))
-    }
-
     /// Attempts to start a "cleaner" thread which removes old sessions
     /// from the database.
     ///
     /// The thread cleans the database every `PERIOD` seconds.
-    fn start_cleaner() -> rusqlite::Result<()> {
-        let conn = Connection::open(DB_PATH)?;
-
-        // We want dependent entries to get deleted automatically.
-        conn.execute("PRAGMA foreign_keys=ON;", &[])?;
-
+    fn start_cleaner(conn: DbConn) {
         thread::spawn(move || loop {
             let start = Instant::now();
             if SessionFairing::delete_old(&conn).is_err() {
-                eprintln!("Error while cleaning sessions db.");
+                eprintln!("Error while cleaning old sessions.");
             }
             let elapsed = start.elapsed();
 
@@ -308,8 +215,6 @@ impl SessionFairing {
                 thread::sleep(remaining);
             }
         });
-
-        Ok(())
     }
 
     /// Deletes "old" sessions from the database.
@@ -325,8 +230,8 @@ impl SessionFairing {
     }
 }
 
-/// The fairing is responsible for setting up the sessions database,
-/// and making sure all users receive sessions which work correctly.
+/// The fairing is reponsible for assigning sessions to new users, and keeping
+/// existing sessions alive. It also removes stale sessions from the database.
 impl Fairing for SessionFairing {
     fn info(&self) -> Info {
         Info {
@@ -335,30 +240,22 @@ impl Fairing for SessionFairing {
         }
     }
 
-    /// Makes sure that we can work with the database, and that
-    /// old entries are deleted automatically by the cleaner thread.
-    /// If any of this fails, the launch is aborted.
+    /// Makes sure stale sessions are removed automatically by a cleaner thread.
     fn on_attach(&self, rocket: Rocket) -> Result<Rocket, Rocket> {
-        if SessionFairing::setup_db().is_err() {
-            eprintln!("Could not setup sessions db.");
-            return Err(rocket);
+        if let Some(conn) = DbConn::get_one(&rocket) {
+            SessionFairing::start_cleaner(conn);
+            Ok(rocket)
+        } else {
+            Err(rocket)
         }
-
-        if SessionFairing::start_cleaner().is_err() {
-            eprintln!("Could not start cleaner for sessions db.");
-            return Err(rocket);
-        }
-
-        Ok(rocket)
     }
 
-    /// Makes sure that all users who send us messages are associated with a session.
+    /// Makes sure that all users who send us requests are assigned sessions.
     ///
-    /// If the user is new, the fairing creates a new session
-    /// and sets the appropriate cookies. If the user already has a session,
-    /// we keep it alive by "refreshing" it.
+    /// If the user is new, the fairing creates a new session and sets the
+    /// appropriate cookies. If the user already has a session, we keep it alive.
     fn on_request(&self, req: &mut Request, _: &Data) {
-        let conn = match req.guard::<SessionsDbConn>() {
+        let conn = match req.guard::<DbConn>() {
             Outcome::Success(conn) => conn,
             _ => {
                 eprintln!("Could not connect to session database.");

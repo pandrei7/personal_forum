@@ -1,101 +1,93 @@
 //! Module for working with rooms.
 //!
-//! Rooms contain threads of messages, and are password protected. Each
+//! Rooms are password protected, and contain threads of messages. Each
 //! room has a unique name which cannot be changed after its creation.
 //! Passwords should be changeable to allow for easier management.
 //!
 //! Information about rooms such as their name and password is held
-//! in a special database. Apart from this "central" one, each room
-//! keeps its messages in a separate database.
+//! in the `rooms` table. Apart from this "central" one, each room
+//! keeps its messages in a separate table, which is created/deleted as needed.
 //!
 //! The rooms module contributes to the incremental-updates mechanism, which
 //! should help decrease network traffic by avoiding the resending of the
-//! entire message database content repeatedly. To achieve this, the `Room`
-//! struct allows retrieving updates only for given time intervals. Each room
-//! remembers the timestamp of its creation to avoid issues which might appear
-//! when deleting and recreating rooms (for example, an user of the old room
-//! might interact with its cached webpage, which could pose some issues).
+//! entire message-table content repeatedly. To achieve this, the `Room`
+//! struct allows retrieving updates only for given time intervals.
 
-use std::fs;
-
-use rocket::fairing::{Fairing, Info, Kind};
 use rocket::request::{self, FromRequest, Request};
-use rocket::Rocket;
 use rocket_contrib::databases::rusqlite::{self, Connection};
-use rocket_contrib::*;
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
 
+use crate::db::DbConn;
 use crate::messages::{self, Message, Updates};
-use crate::sessions::{Session, SessionsDbConn};
+use crate::sessions::Session;
 
-/// The path of the rooms database.
-const DB_PATH: &str = "db/rooms.db";
-
-/// Returns the hash of a password, as it should be stored in databases.
+/// Returns the hash of a password, as it should be stored in the database.
 ///
 /// Passwords should be stored as SHA-256 hashes.
 pub fn hash_password(password: &str) -> String {
     format!("{:x}", Sha256::digest(password.as_bytes()))
 }
 
-/// Holds a connection to the rooms database.
-///
-/// It's a type needed to interact with Rocket.
-#[database("rooms")]
-pub struct RoomsDbConn(Connection);
-
 /// Holds relevant information about a room.
 ///
-/// It's tied to a row in the rooms database.
+/// It's tied to a row in the rooms table.
 pub struct Room {
     name: String,
     /// The hashed password used to log into the room.
     password: String,
-    db_path: String,
+    /// A number used to identify the table which holds the room's messages.
+    table_id: i32,
+    // TODO(pandrei7): Maybe refactor this out.
     creation: i64,
 }
 
 impl Room {
     /// Creates and initializes a room with the given data.
     ///
-    /// Each room has a database for its messages.
-    /// This database is held in a separate file with path `db_path`.
-    /// The path should probably follow the convention `db/rooms/<name>.db`.
+    /// Each room has a table for its messages. To ensure that these tables
+    /// receive unique names, each room has an associated `table_id`, which
+    /// becomes part of the name. The naming scheme is: `messages{table_id}`.
     pub fn create_room(
         conn: &Connection,
         name: String,
         hashed_password: String,
-        db_path: String,
     ) -> rusqlite::Result<()> {
         let creation = Message::current_timestamp();
         conn.execute(
-            "INSERT INTO rooms (name, password, db_path, creation) VALUES (?1, ?2, ?3, ?4);",
-            &[&name, &hashed_password, &db_path, &creation],
+            "INSERT INTO rooms (name, password, creation) VALUES (?1, ?2, ?3);",
+            &[&name, &hashed_password, &creation],
         )?;
 
-        let conn = Connection::open(db_path)?;
-        Message::setup_db(&conn)?;
+        let table_id: i32 = conn.query_row(
+            "SELECT table_id FROM rooms WHERE name = ?;",
+            &[&name],
+            |row| row.get(0),
+        )?;
 
-        Ok(())
+        let table = format!("messages{}", table_id);
+        Message::setup_table(&conn, &table).and(Ok(()))
     }
 
-    /// Deletes a room from the database, also removing its message database.
+    /// Deletes a room from the database, also removing its message table.
     ///
     /// If the operation fails, the reason is returned as a readable string.
     pub fn delete_room(conn: &Connection, name: &str) -> Result<(), String> {
-        let db_path: String = conn
+        let table_id: i32 = conn
             .query_row(
-                "SELECT db_path FROM rooms WHERE name = ?;",
+                "SELECT table_id FROM rooms WHERE name = ?;",
                 &[&name],
                 |row| row.get(0),
             )
-            .map_err(|_| "Error while retrieving db_path.")?;
+            .map_err(|_| "Error while retrieving table_id.")?;
 
+        let table = format!("messages{}", table_id);
         match conn.execute("DELETE FROM rooms WHERE name = ?;", &[&name]) {
-            Ok(1) => fs::remove_file(db_path)
-                .map_err(|_| "Error while deleting messages database.".into()),
-            _ => Err("Error while deleting from database.".into()),
+            Ok(1) => conn
+                .execute(&format!("DROP TABLE IF EXISTS {};", table), &[])
+                .map(|_| ())
+                .map_err(|_| "Error while deleting the messages table.".into()),
+            _ => Err("Error while deleting room metadata.".into()),
         }
     }
 
@@ -122,12 +114,18 @@ impl Room {
     /// Returns the next incremental updates a user should receive when requested.
     ///
     /// The timestamps should be given in the format used by the messages database.
-    pub fn get_updates_between(&self, last_update: i64, now: i64) -> rusqlite::Result<Updates> {
-        // If a user is desynchronized, they should delete the messages of the old room.
-        let clean_stored = self.is_desynchronized(last_update);
+    pub fn get_updates_between(
+        &self,
+        conn: &Connection,
+        last_update: i64,
+        now: i64,
+    ) -> rusqlite::Result<Updates> {
+        // If this room is a recreation, the client might have messages from
+        // the old room in their caches, so they should remove those first.
+        let clean_stored = last_update <= self.creation;
 
-        let conn = Connection::open(&self.db_path)?;
-        let messages = Message::get_between(&conn, last_update, now)?;
+        let table = format!("messages{}", self.table_id);
+        let messages = Message::get_between(&conn, &table, last_update, now)?;
 
         Ok(Updates {
             clean_stored,
@@ -138,36 +136,26 @@ impl Room {
     /// Adds a new message to the room.
     pub fn add_message(
         &self,
+        conn: &Connection,
         mut content: String,
         author: String,
         reply_to: Option<i32>,
     ) -> rusqlite::Result<()> {
-        let conn = Connection::open(&self.db_path)?;
         messages::prepare_for_storage(&mut content);
-        Message::add(&conn, content, author, reply_to)
-    }
 
-    /// Checks if a user is desynchronized.
-    ///
-    /// A user is considered "desynchronized" if the last time they received
-    /// updates for this room happened before the room was even created.
-    ///
-    /// This can happen if, for example, a user is logged into a room which
-    /// gets deleted, then recreated. The user might still interact with the
-    /// old version of the webpage, which could lead to weird behaviour.
-    pub fn is_desynchronized(&self, last_update: i64) -> bool {
-        last_update <= self.creation
+        let table = format!("messages{}", self.table_id);
+        Message::add(&conn, &table, content, author, reply_to)
     }
 
     /// Tries to retrieve the database entry associated with a room, given its name.
     fn from_db(conn: &Connection, name: &str) -> rusqlite::Result<Room> {
         conn.query_row(
-            "SELECT password, db_path, creation FROM rooms WHERE name = ?;",
+            "SELECT password, table_id, creation FROM rooms WHERE name = ?;",
             &[&name],
             |row| Room {
                 name: String::from(name),
                 password: row.get(0),
-                db_path: row.get(1),
+                table_id: row.get(1),
                 creation: row.get(2),
             },
         )
@@ -204,6 +192,7 @@ impl<'a, 'r> FromRequest<'a, 'r> for Room {
     fn from_request(req: &'a Request<'r>) -> request::Outcome<Self, Self::Error> {
         // Try to extract the name of the room.
         let name = {
+            // Room requests should have URLs that start with `/room/<name>`.
             let mut segs = req.uri().segments();
             if segs.next() != Some("room") {
                 return request::Outcome::Forward(());
@@ -214,9 +203,10 @@ impl<'a, 'r> FromRequest<'a, 'r> for Room {
             }
         };
 
+        let conn = req.guard::<DbConn>()?;
+
         // Retrieve the room entry.
         let room = {
-            let conn = req.guard::<RoomsDbConn>()?;
             match Room::from_db(&conn, &name) {
                 Ok(room) => room,
                 _ => return request::Outcome::Forward(()),
@@ -226,8 +216,7 @@ impl<'a, 'r> FromRequest<'a, 'r> for Room {
         // Find the user's password attempt.
         let hashed_password = {
             let session = req.guard::<Session>()?;
-            let sessions_conn = req.guard::<SessionsDbConn>()?;
-            match session.get_room_attempt(&sessions_conn, &name) {
+            match session.get_room_attempt(&conn, &name) {
                 Ok(password) => password,
                 _ => return request::Outcome::Forward(()),
             }
@@ -238,51 +227,6 @@ impl<'a, 'r> FromRequest<'a, 'r> for Room {
         } else {
             request::Outcome::Forward(())
         }
-    }
-}
-
-/// A fairing used to make interaction with the rooms database possible.
-#[derive(Default)]
-pub struct RoomFairing;
-
-impl RoomFairing {
-    /// Initializes the rooms database.
-    ///
-    /// The database should be "persistent", meaning that it is not
-    /// cleaned on startup of the server program.
-    fn setup_db() -> rusqlite::Result<()> {
-        let conn = Connection::open(DB_PATH)?;
-
-        conn.execute(
-            "CREATE TABLE IF NOT EXISTS rooms (
-                name     TEXT PRIMARY KEY,
-                password TEXT NOT NULL,
-                db_path  TEXT NOT NULL,
-                creation INTEGER NOT NULL
-            );",
-            &[],
-        )
-        .and(Ok(()))
-    }
-}
-
-/// The fairing is responsible for setting up the rooms database.
-impl Fairing for RoomFairing {
-    fn info(&self) -> Info {
-        Info {
-            name: "Room Fairing",
-            kind: Kind::Attach,
-        }
-    }
-
-    /// Makes sure that we can interact with the rooms database.
-    fn on_attach(&self, rocket: Rocket) -> Result<Rocket, Rocket> {
-        if RoomFairing::setup_db().is_err() {
-            eprintln!("Could not setup rooms db.");
-            return Err(rocket);
-        }
-
-        Ok(rocket)
     }
 }
 
