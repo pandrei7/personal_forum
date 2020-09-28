@@ -10,8 +10,11 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use pulldown_cmark::html;
 use pulldown_cmark::{Options, Parser};
-use rocket_contrib::databases::rusqlite::{self, Connection};
+use rocket_contrib::databases::postgres::rows::Row;
+use rocket_contrib::databases::postgres::{self, Connection};
 use serde::{Deserialize, Serialize};
+
+use crate::*;
 
 /// Sanitizes a user's message and prepares it for being stored.
 ///
@@ -48,14 +51,14 @@ pub struct Message {
 
 impl Message {
     /// Initializes the table which holds messages.
-    pub fn setup_table(conn: &Connection, table: &str) -> rusqlite::Result<()> {
+    pub fn setup_table(conn: &Connection, table: &str) -> postgres::Result<()> {
         let sql = format!(
             "CREATE TABLE IF NOT EXISTS {table} (
-                id        INTEGER PRIMARY KEY AUTOINCREMENT,
+                id        SERIAL PRIMARY KEY,
                 content   TEXT NOT NULL,
-                timestamp INTEGER NOT NULL,
+                timestamp BIGINT NOT NULL,
                 author    TEXT,
-                reply_to  INTEGER,
+                reply_to  INT,
                 FOREIGN KEY (author) REFERENCES sessions(id) ON DELETE SET NULL,
                 FOREIGN KEY (reply_to) REFERENCES {table}(id)
             );",
@@ -75,19 +78,23 @@ impl Message {
         table: &str,
         old: i64,
         new: i64,
-    ) -> rusqlite::Result<Vec<Self>> {
-        conn.prepare(&format!(
-            "SELECT * FROM {} WHERE ?1 < timestamp AND timestamp <= ?2;",
-            table
-        ))?
-        .query_map(&[&old, &new], |row| Message {
-            id: row.get(0),
-            content: row.get(1),
-            timestamp: row.get(2),
-            author: row.get(3),
-            reply_to: row.get(4),
-        })?
-        .collect()
+    ) -> postgres::Result<Vec<Self>> {
+        Ok(query_and_map!(
+            conn,
+            &format!(
+                "SELECT * FROM {} WHERE $1 < timestamp AND timestamp <= $2;",
+                table
+            ),
+            &[&old, &new],
+            |row: Row| Message {
+                id: row.get(0),
+                content: row.get(1),
+                timestamp: row.get(2),
+                author: row.get(3),
+                reply_to: row.get(4),
+            }
+        )
+        .collect())
     }
 
     /// Adds a new message to a given table.
@@ -97,12 +104,12 @@ impl Message {
         content: String,
         author: String,
         reply_to: Option<i32>,
-    ) -> rusqlite::Result<()> {
+    ) -> postgres::Result<()> {
         let timestamp = Message::current_timestamp();
 
         conn.execute(
             &format!(
-                "INSERT INTO {} (content, timestamp, author, reply_to) VALUES (?1, ?2, ?3, ?4);",
+                "INSERT INTO {} (content, timestamp, author, reply_to) VALUES ($1, $2, $3, $4);",
                 table
             ),
             &[&content, &timestamp, &author, &reply_to],

@@ -14,13 +14,15 @@
 //! struct allows retrieving updates only for given time intervals.
 
 use rocket::request::{self, FromRequest, Request};
-use rocket_contrib::databases::rusqlite::{self, Connection};
+use rocket_contrib::databases::postgres::rows::Row;
+use rocket_contrib::databases::postgres::{self, Connection};
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
 
 use crate::db::DbConn;
 use crate::messages::{self, Message, Updates};
 use crate::sessions::Session;
+use crate::*;
 
 /// Returns the hash of a password, as it should be stored in the database.
 ///
@@ -52,17 +54,18 @@ impl Room {
         conn: &Connection,
         name: String,
         hashed_password: String,
-    ) -> rusqlite::Result<()> {
+    ) -> postgres::Result<()> {
         let creation = Message::current_timestamp();
         conn.execute(
-            "INSERT INTO rooms (name, password, creation) VALUES (?1, ?2, ?3);",
+            "INSERT INTO rooms (name, password, creation) VALUES ($1, $2, $3);",
             &[&name, &hashed_password, &creation],
         )?;
 
-        let table_id: i32 = conn.query_row(
-            "SELECT table_id FROM rooms WHERE name = ?;",
+        let table_id: i32 = query_one_row!(
+            conn,
+            "SELECT table_id FROM rooms WHERE name = $1;",
             &[&name],
-            |row| row.get(0),
+            |row: Row| row.get(0)
         )?;
 
         let table = format!("messages{}", table_id);
@@ -73,16 +76,16 @@ impl Room {
     ///
     /// If the operation fails, the reason is returned as a readable string.
     pub fn delete_room(conn: &Connection, name: &str) -> Result<(), String> {
-        let table_id: i32 = conn
-            .query_row(
-                "SELECT table_id FROM rooms WHERE name = ?;",
-                &[&name],
-                |row| row.get(0),
-            )
-            .map_err(|_| "Error while retrieving table_id.")?;
+        let table_id: i32 = query_one_row!(
+            conn,
+            "SELECT table_id FROM rooms WHERE name = $1;",
+            &[&name],
+            |row: Row| row.get(0)
+        )
+        .map_err(|_| "Error while retrieving table_id.")?;
 
         let table = format!("messages{}", table_id);
-        match conn.execute("DELETE FROM rooms WHERE name = ?;", &[&name]) {
+        match conn.execute("DELETE FROM rooms WHERE name = $1;", &[&name]) {
             Ok(1) => conn
                 .execute(&format!("DROP TABLE IF EXISTS {};", table), &[])
                 .map(|_| ())
@@ -92,10 +95,8 @@ impl Room {
     }
 
     /// Returns a list with the names of all the rooms stored in the database.
-    pub fn active_rooms(conn: &Connection) -> rusqlite::Result<Vec<String>> {
-        conn.prepare("SELECT name FROM rooms;")?
-            .query_map(&[], |row| row.get(0))?
-            .collect()
+    pub fn active_rooms(conn: &Connection) -> postgres::Result<Vec<String>> {
+        Ok(query_and_map!(conn, "SELECT name FROM rooms;", &[], |row: Row| row.get(0)).collect())
     }
 
     /// Changes the password of the given room.
@@ -103,9 +104,9 @@ impl Room {
         conn: &Connection,
         name: &str,
         hashed_password: &str,
-    ) -> rusqlite::Result<()> {
+    ) -> postgres::Result<()> {
         conn.execute(
-            "UPDATE rooms SET password = ?1 WHERE name = ?2;",
+            "UPDATE rooms SET password = $1 WHERE name = $2;",
             &[&hashed_password, &name],
         )
         .and(Ok(()))
@@ -119,7 +120,7 @@ impl Room {
         conn: &Connection,
         last_update: i64,
         now: i64,
-    ) -> rusqlite::Result<Updates> {
+    ) -> postgres::Result<Updates> {
         // If this room is a recreation, the client might have messages from
         // the old room in their caches, so they should remove those first.
         let clean_stored = last_update <= self.creation;
@@ -140,7 +141,7 @@ impl Room {
         mut content: String,
         author: String,
         reply_to: Option<i32>,
-    ) -> rusqlite::Result<()> {
+    ) -> postgres::Result<()> {
         messages::prepare_for_storage(&mut content);
 
         let table = format!("messages{}", self.table_id);
@@ -148,16 +149,17 @@ impl Room {
     }
 
     /// Tries to retrieve the database entry associated with a room, given its name.
-    fn from_db(conn: &Connection, name: &str) -> rusqlite::Result<Room> {
-        conn.query_row(
-            "SELECT password, table_id, creation FROM rooms WHERE name = ?;",
+    fn from_db(conn: &Connection, name: &str) -> postgres::Result<Room> {
+        query_one_row!(
+            conn,
+            "SELECT password, table_id, creation FROM rooms WHERE name = $1;",
             &[&name],
-            |row| Room {
+            |row: Row| Room {
                 name: String::from(name),
                 password: row.get(0),
                 table_id: row.get(1),
                 creation: row.get(2),
-            },
+            }
         )
     }
 
@@ -240,7 +242,7 @@ pub struct RoomLogin {
 
 impl RoomLogin {
     /// Checks if the form contains the correct credentials to log into a room.
-    pub fn can_log_in(&self, conn: &Connection) -> rusqlite::Result<bool> {
+    pub fn can_log_in(&self, conn: &Connection) -> postgres::Result<bool> {
         let hashed_password = hash_password(&self.password);
         let room = Room::from_db(&conn, &self.name)?;
         Ok(room.valid_password(&hashed_password))

@@ -4,66 +4,14 @@
 //! data types and fairings to connect to this database, and to correctly
 //! set it up when starting.
 
-use core::ops::Deref;
-
 use rocket::fairing::{Fairing, Info, Kind};
-use rocket::request::{FromRequest, Outcome};
 use rocket::*;
-use rocket_contrib::databases::rusqlite::{self, Connection};
+use rocket_contrib::databases::postgres::{self, Connection};
 use rocket_contrib::*;
 
 /// A connection to the database.
-pub struct DbConn(Helper);
-
-impl DbConn {
-    /// Retrieves a fairing that initializes the associated database connection pool.
-    pub fn fairing() -> impl Fairing {
-        Helper::fairing()
-    }
-
-    /// Retrieves a connection from the configured pool.
-    pub fn get_one(rocket: &Rocket) -> Option<Self> {
-        let conn = Self(Helper::get_one(rocket)?);
-        conn.activate_foreign_keys().map(|_| conn).ok()
-    }
-
-    /// Activates the enforcement of foreign key constraints for this connection.
-    fn activate_foreign_keys(&self) -> rusqlite::Result<()> {
-        self.0.execute("PRAGMA foreign_keys=ON;", &[]).and(Ok(()))
-    }
-}
-
-impl<'a, 'r> FromRequest<'a, 'r> for DbConn {
-    type Error = ();
-
-    /// Connections to the database should enforce foreign key constraints.
-    /// Because we use SQLite, we have to manually activate these checks with
-    /// a pragma statement. This statement only applies to one connection,
-    /// so each connection should be set up individually.
-    fn from_request(req: &'a Request<'r>) -> Outcome<DbConn, Self::Error> {
-        let conn = Self(req.guard::<Helper>()?);
-
-        match conn.activate_foreign_keys() {
-            Ok(_) => Outcome::Success(conn),
-            _ => Outcome::Failure((rocket::http::Status::InternalServerError, ())),
-        }
-    }
-}
-
-impl Deref for DbConn {
-    type Target = Connection;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-/// A helper-type which holds a connection to the database.
-///
-/// It exists so that the main database-connection type can profit
-/// from default implementations from `rocket_contrib`.
 #[database("db")]
-struct Helper(Connection);
+pub struct DbConn(Connection);
 
 /// A fairing which makes sure we can interact with the database correctly.
 #[derive(Default)]
@@ -74,9 +22,9 @@ impl DbInitFairing {
     ///
     /// It drops tables which should not be persistent, and makes sure
     /// all tables needed for the server to function are set up correctly.
-    fn init_db(&self, conn: &Connection) -> rusqlite::Result<()> {
-        conn.execute_batch(
-            "DROP TABLE IF EXISTS sessions;
+    fn init_db(&self, conn: &Connection) -> postgres::Result<()> {
+        conn.batch_execute(
+            "DROP TABLE IF EXISTS sessions CASCADE;
             DROP TABLE IF EXISTS room_attempts;
             DROP TABLE IF EXISTS room_updates;
 
@@ -86,8 +34,14 @@ impl DbInitFairing {
             );
             CREATE TABLE IF NOT EXISTS sessions (
                 id          TEXT PRIMARY KEY,
-                last_update INTEGER NOT NULL,
-                is_admin    INTEGER NOT NULL
+                last_update BIGINT NOT NULL,
+                is_admin    BOOLEAN NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS rooms (
+                name     TEXT PRIMARY KEY,
+                password TEXT NOT NULL,
+                table_id SERIAL NOT NULL,
+                creation BIGINT NOT NULL
             );
             CREATE TABLE IF NOT EXISTS room_attempts (
                 id       TEXT NOT NULL,
@@ -100,16 +54,10 @@ impl DbInitFairing {
             CREATE TABLE IF NOT EXISTS room_updates (
                 id        TEXT NOT NULL,
                 name      TEXT NOT NULL,
-                timestamp INTEGER NOT NULL,
+                timestamp BIGINT NOT NULL,
                 PRIMARY KEY (id, name),
                 FOREIGN KEY (id) REFERENCES sessions(id) ON DELETE CASCADE,
                 FOREIGN KEY (name) REFERENCES rooms(name) ON DELETE CASCADE
-            );
-            CREATE TABLE IF NOT EXISTS rooms (
-                name     TEXT NOT NULL UNIQUE,
-                password TEXT NOT NULL,
-                table_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                creation INTEGER NOT NULL
             );",
         )
     }
@@ -135,4 +83,41 @@ impl Fairing for DbInitFairing {
             _ => Err(rocket),
         }
     }
+}
+
+/// Executes a database query which should return exactly one row.
+///
+/// This is a convenience macro which makes sure that a given query
+/// returns only one row. You are also allowed to map that row using
+/// a function - `$row_map`. The macro gets evaluated to a value
+/// of type postgres::Result<T>, where T is the type returned by the
+/// map function. If the query does not return exactly one row, the
+/// operation is considered to have failed.
+#[macro_export]
+macro_rules! query_one_row {
+    ($conn: expr, $sql:expr, $params:expr, $row_map:expr) => {{
+        use rocket_contrib::databases::postgres;
+        use std::io::{Error, ErrorKind};
+
+        match $conn.query($sql, $params) {
+            Ok(rows) if rows.len() == 1 => Ok($row_map(rows.get(0))),
+            Ok(_) => {
+                let io_err = Error::new(ErrorKind::Other, "Wrong number of rows");
+                Err(postgres::Error::from(io_err))
+            }
+            Err(err) => Err(err),
+        }
+    }};
+}
+
+/// Executes a database query and maps a given function over the returned rows.
+///
+/// This is a convenience macro which both queries the database, and maps
+/// a function over the rows. The result is an iterator over the mapped rows.
+/// If the query fails, the macro returns the error early.
+#[macro_export]
+macro_rules! query_and_map {
+    ($conn: expr, $sql:expr, $params:expr, $row_map:expr) => {{
+        $conn.query($sql, $params)?.into_iter().map($row_map)
+    }};
 }

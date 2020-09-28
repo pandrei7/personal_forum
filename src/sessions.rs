@@ -20,10 +20,11 @@ use rocket::fairing::{Fairing, Info, Kind};
 use rocket::http::Cookie;
 use rocket::request::{FromRequest, Outcome, Request};
 use rocket::{Data, Rocket};
-use rocket_contrib::databases::rusqlite;
-use rocket_contrib::databases::rusqlite::Connection;
+use rocket_contrib::databases::postgres::rows::Row;
+use rocket_contrib::databases::postgres::{self, Connection};
 
 use crate::db::DbConn;
+use crate::*;
 
 /// The name of the cookie used to hold a session's id.
 const SESSION_ID_COOKIE: &str = "session_id";
@@ -39,8 +40,9 @@ pub struct Session {
 
 impl Session {
     /// Counts the number of sessions in the database.
-    pub fn count_sessions(conn: &Connection) -> rusqlite::Result<u32> {
-        conn.query_row("SELECT COUNT(*) FROM sessions;", &[], |row| row.get(0))
+    pub fn count_sessions(conn: &Connection) -> postgres::Result<i64> {
+        query_one_row!(conn, "SELECT COUNT(*) FROM sessions;", &[], |row: Row| row
+            .get(0))
     }
 
     /// Checks if the session belongs to an administrator.
@@ -59,7 +61,7 @@ impl Session {
     /// and returns true if the operation succeeds.
     pub fn make_admin(&mut self, conn: &Connection) -> bool {
         match conn.execute(
-            "UPDATE sessions SET is_admin = 1 WHERE id = ?;",
+            "UPDATE sessions SET is_admin = TRUE WHERE id = $1;",
             &[&self.id],
         ) {
             // The query should update exactly one row.
@@ -77,20 +79,22 @@ impl Session {
         conn: &Connection,
         name: &str,
         hashed_password: &str,
-    ) -> rusqlite::Result<()> {
+    ) -> postgres::Result<()> {
         conn.execute(
-            "INSERT OR REPLACE INTO room_attempts (id, name, password) VALUES (?1, ?2, ?3);",
+            "INSERT INTO room_attempts (id, name, password) VALUES ($1, $2, $3)
+            ON CONFLICT (id, name) DO UPDATE SET password = excluded.password;",
             &[&self.id, &name, &hashed_password],
         )
         .and(Ok(()))
     }
 
     /// Retrieves the last password associated with a login attempt for a given room, if it exists.
-    pub fn get_room_attempt(&self, conn: &Connection, name: &str) -> rusqlite::Result<String> {
-        conn.query_row(
-            "SELECT password FROM room_attempts WHERE id = ?1 AND name = ?2;",
+    pub fn get_room_attempt(&self, conn: &Connection, name: &str) -> postgres::Result<String> {
+        query_one_row!(
+            conn,
+            "SELECT password FROM room_attempts WHERE id = $1 AND name = $2;",
             &[&self.id, &name],
-            |row| row.get::<usize, String>(0),
+            |row: Row| row.get(0)
         )
     }
 
@@ -100,55 +104,58 @@ impl Session {
         conn: &Connection,
         name: &str,
         timestamp: i64,
-    ) -> rusqlite::Result<()> {
+    ) -> postgres::Result<()> {
         conn.execute(
-            "INSERT OR REPLACE INTO room_updates (id, name, timestamp) VALUES (?1, ?2, ?3);",
+            "INSERT INTO room_updates (id, name, timestamp) VALUES ($1, $2, $3)
+            ON CONFLICT (id, name) DO UPDATE SET timestamp = excluded.timestamp;",
             &[&self.id, &name, &timestamp],
         )
         .and(Ok(()))
     }
 
     /// Retrieves the timestamp of the last time a user got updates for a given room.
-    pub fn get_room_update(&self, conn: &Connection, name: &str) -> rusqlite::Result<i64> {
-        conn.query_row(
-            "SELECT timestamp FROM room_updates WHERE id = ?1 AND name = ?2;",
+    pub fn get_room_update(&self, conn: &Connection, name: &str) -> postgres::Result<i64> {
+        query_one_row!(
+            conn,
+            "SELECT timestamp FROM room_updates WHERE id = $1 AND name = $2;",
             &[&self.id, &name],
-            |row| row.get(0),
+            |row: Row| row.get(0)
         )
     }
 
     /// Keeps a session "alive" by updating its timestamp.
-    fn keep_alive(&mut self, conn: &Connection) -> rusqlite::Result<()> {
+    fn keep_alive(&mut self, conn: &Connection) -> postgres::Result<()> {
         self.last_update = Session::current_timestamp();
 
         conn.execute(
-            "UPDATE sessions SET last_update = ?1 WHERE id = ?2;",
+            "UPDATE sessions SET last_update = $1 WHERE id = $2;",
             &[&self.last_update, &self.id],
         )
         .and(Ok(()))
     }
 
     /// Tries to retrive the session associated with an id from the database.
-    fn from_db(conn: &Connection, id: &str) -> rusqlite::Result<Session> {
-        conn.query_row(
-            "SELECT last_update, is_admin FROM sessions WHERE id = ?;",
+    fn from_db(conn: &Connection, id: &str) -> postgres::Result<Session> {
+        query_one_row!(
+            conn,
+            "SELECT last_update, is_admin FROM sessions WHERE id = $1;",
             &[&id],
-            |row| Session {
+            |row: Row| Session {
                 id: String::from(id),
                 last_update: row.get(0),
-                is_admin: row.get::<usize, i32>(1) == 1,
-            },
+                is_admin: row.get(1),
+            }
         )
     }
 
     /// Tries to start a new session and inserts it into the database.
-    fn start_new(conn: &Connection) -> rusqlite::Result<String> {
+    fn start_new(conn: &Connection) -> postgres::Result<String> {
         let id = Session::new_session_id();
         let last_update = Session::current_timestamp();
 
         conn.execute(
-            "INSERT INTO sessions (id, last_update, is_admin) VALUES (?1, ?2, ?3);",
-            &[&id, &last_update, &0],
+            "INSERT INTO sessions (id, last_update, is_admin) VALUES ($1, $2, $3);",
+            &[&id, &last_update, &false],
         )
         .and(Ok(id))
     }
@@ -221,11 +228,11 @@ impl SessionFairing {
     ///
     /// A session is considered old if its last update happened more than
     /// `TIMEOUT_SECS` seconds before the function was called.
-    fn delete_old(conn: &Connection) -> rusqlite::Result<()> {
+    fn delete_old(conn: &Connection) -> postgres::Result<()> {
         const TIMEOUT_SECS: i64 = 7200;
         let too_old = Session::current_timestamp() - TIMEOUT_SECS;
 
-        conn.execute("DELETE FROM sessions WHERE last_update < ?;", &[&too_old])
+        conn.execute("DELETE FROM sessions WHERE last_update < $1;", &[&too_old])
             .and(Ok(()))
     }
 }
