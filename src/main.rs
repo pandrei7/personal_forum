@@ -217,7 +217,7 @@ fn post(
         .map_err(|_| Status::InternalServerError)
 }
 
-#[get("/<file..>", rank = 6)]
+#[get("/static/<file..>", rank = 6)]
 fn static_file(file: PathBuf) -> Result<NamedFile, NotFound<String>> {
     let path = Path::new("static/").join(file);
     NamedFile::open(&path).map_err(|err| NotFound(err.to_string()))

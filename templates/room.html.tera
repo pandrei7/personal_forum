@@ -8,7 +8,7 @@
 
   <title>Room '{{ name }}'</title>
 
-  <link href="/css/room.css" rel="stylesheet">
+  <link href="/static/css/room.css" rel="stylesheet">
 </head>
 
 <body>
@@ -26,7 +26,7 @@
   <div id="message-box"></div>
 
   <script>const roomName = '{{ name }}';</script>
-  <script src="/js/room.js"></script>
+  <script src="/static/js/room.js"></script>
 </body>
 
 </html>
