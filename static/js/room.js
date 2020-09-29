@@ -17,6 +17,10 @@ class Thread {
         return this.firstPost.id;
     }
 
+    timestamp() {
+        return this.firstPost.timestamp;
+    }
+
     getAsElement() {
         // Replies should appear in chronological order.
         this.replies.sort((a, b) => a.timestamp - b.timestamp);
@@ -147,10 +151,47 @@ const placeMessages = function(messages) {
         }
     }
 
+    const searchText = document.getElementById('searchText').value;
+
+    class OrderedElement {
+        element = {};
+        timestamp = 0;
+        matches = 0;
+
+        constructor(element, timestamp) {
+            this.element = element;
+            this.timestamp = timestamp;
+        }
+    }
+
+    const elements = [];
+    for (const [id, thread] of threads.entries()) {
+        const element = thread.getAsElement();
+        const orderedElement = new OrderedElement(element, thread.timestamp());
+
+        if (searchText) {
+            const marker = new Mark(element);
+            marker.mark(searchText, {
+                done: function(matchCount) {
+                    orderedElement.matches = matchCount;
+                    elements.push(orderedElement);
+                }
+            });
+        } else {
+            elements.push(orderedElement);
+        }
+    }
+    elements.sort((a, b) => {
+        if (a.matches === b.matches) {
+            return b.timestamp - a.timestamp;
+        }
+        return b.matches - a.matches;
+    });
+
     const messageBox = document.getElementById('message-box');
     messageBox.innerHTML = "";
-    for (const [id, thread] of threads.entries()) {
-        messageBox.appendChild(thread.getAsElement());
+    for (const orderedElement of elements) {
+        messageBox.appendChild(orderedElement.element);
     }
 };
 
@@ -194,6 +235,19 @@ window.addEventListener('load', async () => {
         })
         .catch(error => infoBox.textContent = error);
     };
+});
+
+window.addEventListener('load', () => {
+    const textBox = document.getElementById('searchText');
+    textBox.addEventListener('input', function() {
+        placeMessages(storedMessages);
+    });
+
+    const clearSearchButton = document.getElementById('clearSearchButton');
+    clearSearchButton.addEventListener('click', function() {
+        textBox.value = '';
+        textBox.dispatchEvent(new Event('input'));
+    });
 });
 
 window.addEventListener('load', async () => {

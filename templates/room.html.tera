@@ -23,8 +23,14 @@
     </form>
   </div>
 
+  <div id="search-box">
+    <input type="text" id="searchText" placeholder="Write your search terms here.">
+    <button id="clearSearchButton">Clear</button>
+  </div>
+
   <div id="message-box"></div>
 
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mark.js/8.11.1/mark.min.js"></script>
   <script>const roomName = '{{ name }}';</script>
   <script src="/static/js/room.js"></script>
 </body>
