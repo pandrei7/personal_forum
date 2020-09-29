@@ -24,11 +24,7 @@ impl DbInitFairing {
     /// all tables needed for the server to function are set up correctly.
     fn init_db(&self, conn: &Connection) -> postgres::Result<()> {
         conn.batch_execute(
-            "DROP TABLE IF EXISTS sessions CASCADE;
-            DROP TABLE IF EXISTS room_attempts;
-            DROP TABLE IF EXISTS room_updates;
-
-            CREATE TABLE IF NOT EXISTS admins (
+            "CREATE TABLE IF NOT EXISTS admins (
                 username TEXT PRIMARY KEY,
                 password TEXT NOT NULL
             );
@@ -58,7 +54,11 @@ impl DbInitFairing {
                 PRIMARY KEY (id, name),
                 FOREIGN KEY (id) REFERENCES sessions(id) ON DELETE CASCADE,
                 FOREIGN KEY (name) REFERENCES rooms(name) ON DELETE CASCADE
-            );",
+            );
+
+            DELETE FROM sessions;
+            DELETE FROM room_attempts;
+            DELETE FROM room_updates;",
         )
     }
 }
