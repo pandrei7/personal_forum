@@ -1,5 +1,6 @@
 let storedMessages = [];
 let storedOpen = new Set();
+let storedRoomsSeen = new Set();
 
 class Thread {
     firstPost = null;
@@ -43,9 +44,11 @@ class Thread {
             if (repliesBox.hidden) {
                 repliesBox.hidden = false;
                 storedOpen.add(threadId);
+                storeOpen();
             } else {
                 repliesBox.hidden = true;
                 storedOpen.delete(threadId);
+                storeOpen();
             }
         });
 
@@ -132,6 +135,7 @@ const updateMessages = function() {
                    storedOpen = new Set();
                }
                storedMessages.push(...updates.messages);
+               storeMessages();
                placeMessages(storedMessages);
            });
 };
@@ -200,10 +204,51 @@ const showInfo = function(info) {
     box.textContent = info;
 };
 
-window.addEventListener('load', () => {
+const redirectToRoom = async (name) => {
+    await storeMessages(); // Save everything before redirecting.
+    location.assign(`/room/${name}`);
+};
+
+const populateRoomsSeen = () => {
+    const datalist = document.getElementById('rooms-seen');
+    datalist.innerHTML = '';
+
+    for (const name of storedRoomsSeen) {
+        const option = document.createElement('option');
+        option.setAttribute('value', name);
+        datalist.appendChild(option);
+    }
+};
+
+const loadPersistent = () => {
     storedMessages = JSON.parse(localStorage.getItem(`room${roomName}`)) ?? [];
     storedOpen =
         new Set(JSON.parse(localStorage.getItem(`open${roomName}`)) ?? []);
+    storedRoomsSeen =
+        new Set(JSON.parse(localStorage.getItem('roomsSeen')) ?? []);
+}
+
+const storeMessages = () => {
+    localStorage.setItem(`room${roomName}`, JSON.stringify(storedMessages));
+};
+
+const storeOpen = () => {
+    localStorage.setItem(`open${roomName}`, JSON.stringify([...storedOpen]));
+};
+
+const storeRoomsSeen = () => {
+    localStorage.setItem('roomsSeen', JSON.stringify([...storedRoomsSeen]));
+};
+
+const storeScroll = () => {
+    sessionStorage.setItem('y', document.documentElement.scrollTop);
+};
+
+window.addEventListener('load', () => {
+    loadPersistent();
+    storedRoomsSeen.add(roomName);
+    storeRoomsSeen();
+    populateRoomsSeen();
 });
 
 window.addEventListener('load', async () => {
@@ -238,6 +283,16 @@ window.addEventListener('load', async () => {
 });
 
 window.addEventListener('load', () => {
+    const goToRoom = document.getElementById('go-to-room');
+    goToRoom.addEventListener('keyup', async (event) => {
+        event.preventDefault();
+
+        const wantedRoomName = goToRoom.value.trim();
+        if (event.keyCode === 13 && wantedRoomName) {
+            redirectToRoom(wantedRoomName);
+        }
+    });
+
     const textBox = document.getElementById('searchText');
     textBox.addEventListener('input', function() {
         placeMessages(storedMessages);
@@ -253,11 +308,4 @@ window.addEventListener('load', () => {
 window.addEventListener('load', async () => {
     await updateMessages();
     document.documentElement.scrollTop = sessionStorage.getItem('y');
-});
-
-window.addEventListener('beforeunload', () => {
-    localStorage.setItem(`room${roomName}`, JSON.stringify(storedMessages));
-    localStorage.setItem(`open${roomName}`, JSON.stringify([...storedOpen]));
-
-    sessionStorage.setItem('y', document.documentElement.scrollTop);
 });

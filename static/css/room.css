@@ -19,6 +19,12 @@
     }
 }
 
+nav {
+    background: khaki;
+    font-size: calc(1.1rem + 0.3vw);
+    padding: .25rem .5rem;
+}
+
 h1 {
     font-size: calc(1.5rem + 3vw);
 }

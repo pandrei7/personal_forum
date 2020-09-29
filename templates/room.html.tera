@@ -12,6 +12,12 @@
 </head>
 
 <body>
+  <nav>
+    <a href="/">Personal forum</a>
+    <input list="rooms-seen" id="go-to-room" placeholder="Go to another room">
+    <datalist id="rooms-seen"></datalist>
+  </nav>
+
   <h1>Welcome to '{{ name }}'</h1>
 
   <div id="newThreadBox">
