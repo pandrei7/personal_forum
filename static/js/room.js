@@ -2,37 +2,37 @@ let storedMessages = [];
 let storedOpen = new Set();
 
 class Thread {
-    #firstPost = null;
-    #replies = [];
+    firstPost = null;
+    replies = [];
 
     constructor(firstPost) {
-        this.#firstPost = firstPost;
+        this.firstPost = firstPost;
     }
 
     addReply(reply) {
-        this.#replies.push(reply);
+        this.replies.push(reply);
     }
 
     id() {
-        return this.#firstPost.id;
+        return this.firstPost.id;
     }
 
     getAsElement() {
         // Replies should appear in chronological order.
-        this.#replies.sort((a, b) => a.timestamp - b.timestamp);
+        this.replies.sort((a, b) => a.timestamp - b.timestamp);
 
         const threadId = this.id();
 
         const repliesBox = document.createElement('div');
         repliesBox.classList.add('replies-box');
         repliesBox.hidden = !storedOpen.has(threadId);
-        for (const reply of this.#replies) {
+        for (const reply of this.replies) {
             repliesBox.appendChild(makeMessageBox(reply));
         }
         repliesBox.appendChild(makeSendBox(threadId));
 
         const firstPost = document.createElement('a');
-        const firstMessageBox = makeMessageBox(this.#firstPost);
+        const firstMessageBox = makeMessageBox(this.firstPost);
         firstMessageBox.classList.add('threadMessage');
         firstPost.appendChild(firstMessageBox);
         firstPost.addEventListener('click', function() {
