@@ -61,14 +61,29 @@ class Thread {
     }
 }
 
+const addMentions = (node) => {
+    findAndReplaceDOMText(node, {
+        find: /@\d+/g,
+        replace: (tag) => {
+            const replyId = tag.text.slice(1);
+            const link = document.createElement('a');
+            link.href = `#message${replyId}`;
+            link.innerHTML = tag.text;
+            return link;
+        },
+    });
+};
+
 const makeMessageBox = function(message) {
     const id = document.createElement('p');
+    id.id = `message${message.id}`;
     id.setAttribute('class', 'messageId');
     id.textContent = `#${message.id}.`;
 
     const content = document.createElement('div');
     content.setAttribute('class', 'messageContent');
     content.innerHTML = message.content;
+    addMentions(content);
 
     const box = document.createElement('div');
     box.classList.add('message');
