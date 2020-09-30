@@ -233,7 +233,7 @@ impl<'a, 'r> FromRequest<'a, 'r> for Room {
 }
 
 /// The content of a form used to hold login credentials for a room.
-#[derive(Deserialize)]
+#[derive(Deserialize, FromForm)]
 pub struct RoomLogin {
     pub name: String,
     /// The plaintext password of the room.

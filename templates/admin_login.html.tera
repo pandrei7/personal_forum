@@ -10,7 +10,9 @@
 <body>
   <h1>Admin login</h1>
 
-  <form id="loginForm">
+  <div id="info-box">{{ info }}</div>
+
+  <form action="/admin_login" method="post" id="loginForm">
     <label for="username">Username: </label>
     <input type="text" name="username" required>
 
@@ -19,8 +21,6 @@
 
     <input type="submit" value="Login">
   </form>
-
-  <script src="/static/js/admin_login.js"></script>
 </body>
 
 </html>

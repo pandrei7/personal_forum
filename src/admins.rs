@@ -10,7 +10,6 @@
 use rocket::request::{FromRequest, Outcome, Request};
 use rocket_contrib::databases::postgres::rows::Row;
 use rocket_contrib::databases::postgres::{self, Connection};
-use serde::Deserialize;
 use sha2::{Digest, Sha256};
 
 use crate::sessions::Session;
@@ -35,7 +34,7 @@ impl<'a, 'r> FromRequest<'a, 'r> for Admin {
 }
 
 /// The content of a form used to log in administrators.
-#[derive(Deserialize)]
+#[derive(FromForm)]
 pub struct AdminLogin {
     username: String,
     password: String,

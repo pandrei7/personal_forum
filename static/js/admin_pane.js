@@ -108,12 +108,12 @@ const changePassword = function(name, password) {
     fetch('/change_room_password', {
         method: 'POST',
         headers: {
-            'Content-Type': 'application/json',
+            'Content-Type': 'application/x-www-form-urlencoded',
         },
-        body: JSON.stringify({
+        body: urlencodePairs({
             name: name,
             password: password
-        })
+        }),
     })
     .then(response => {
         if (!response.ok) {
@@ -128,25 +128,31 @@ const changePassword = function(name, password) {
     .catch(error => alert(error));
 }
 
+const urlencodePairs = (pairsObject) => {
+    const res = [];
+    for (const [key, value] of Object.entries(pairsObject)) {
+        res.push(`${encodeURIComponent(key)}=${encodeURIComponent(value)}`);
+    }
+    return res.join('&');
+};
+
 window.addEventListener('load', printStatus);
 window.addEventListener('load', placeRooms);
 
 window.addEventListener('load', function() {
     const form = document.getElementById('createRoomForm');
-    form.onsubmit = async (e) => {
-        e.preventDefault();
-
-        const data = {
-            name: form.elements['name'].value,
-            password: form.elements['password'].value
-        };
+    form.addEventListener('submit', async (event) => {
+        event.preventDefault();
 
         fetch('/create_room', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/x-www-form-urlencoded',
             },
-            body: JSON.stringify(data)
+            body: urlencodePairs({
+                name: form.elements['name'].value,
+                password: form.elements['password'].value,
+            }),
         })
         .then(response => {
             if (!response.ok) {
@@ -161,5 +167,5 @@ window.addEventListener('load', function() {
         .catch(error => {
             document.getElementById('createRoomStatus').textContent = error;
         });
-    };
+    });
 });

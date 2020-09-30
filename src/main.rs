@@ -11,6 +11,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use rocket::http::Status;
+use rocket::request::{FlashMessage, Form};
 use rocket::response::status::NotFound;
 use rocket::response::{Flash, NamedFile, Redirect};
 use rocket::*;
@@ -24,54 +25,51 @@ use rooms::{Room, RoomLogin};
 use sessions::{Session, SessionFairing};
 
 #[get("/")]
-fn index() -> Result<NamedFile, NotFound<String>> {
-    static_file(PathBuf::from("index.html"))
+fn index(flash: Option<FlashMessage>) -> Template {
+    // Populate the template.
+    let mut context = HashMap::new();
+    context.insert(
+        "info",
+        flash.map(|msg| msg.msg().to_string()).unwrap_or_else(|| "".into()),
+    );
+    Template::render("index", &context)
 }
 
-#[get("/admin_login", rank = 1)]
-fn admin_login_for_admin(_admin: Admin) -> Flash<Redirect> {
-    Flash::warning(
-        Redirect::to("/admin_pane"),
-        "You are already logged in as admin.",
-    )
+#[get("/admin_login")]
+fn admin_login_page(flash: Option<FlashMessage>) -> Template {
+    // Populate the template.
+    let mut context = HashMap::new();
+    context.insert(
+        "info",
+        flash.map(|msg| msg.msg().to_string()).unwrap_or_else(|| "".into()),
+    );
+    Template::render("admin_login", &context)
 }
 
-#[post("/admin_login", format = "json", data = "<login>")]
+#[post("/admin_login", format = "form", data = "<login>")]
 fn admin_login(
     mut session: Session,
-    login: Json<AdminLogin>,
+    login: Form<AdminLogin>,
     conn: DbConn,
 ) -> Result<Redirect, Flash<Redirect>> {
-    let valid = match login.is_valid(&conn) {
-        Ok(valid) => valid,
+    match login.is_valid(&conn) {
+        Ok(true) => (),
         _ => {
             return Err(Flash::error(
                 Redirect::to("/admin_login"),
-                "Credentials as invalid.",
+                "Credentials are invalid.",
             ))
         }
     };
 
-    if valid {
-        if session.make_admin(&conn) {
-            Ok(Redirect::to("/admin_pane"))
-        } else {
-            Err(Flash::error(
-                Redirect::to("/admin_login"),
-                "Could not log you in as admin.",
-            ))
-        }
+    if session.make_admin(&conn) {
+        Ok(Redirect::to("/admin_pane"))
     } else {
         Err(Flash::error(
             Redirect::to("/admin_login"),
-            "Credentials are invalid.",
+            "Could not log you in as admin.",
         ))
     }
-}
-
-#[get("/admin_login", rank = 2)]
-fn admin_login_for_non_admin() -> Result<NamedFile, NotFound<String>> {
-    static_file(PathBuf::from("admin_login.html"))
 }
 
 #[get("/admin_pane", rank = 1)]
@@ -101,8 +99,8 @@ fn active_rooms(_admin: Admin, conn: DbConn) -> Result<Json<Vec<String>>, Status
         .map_err(|_| Status::InternalServerError)
 }
 
-#[post("/create_room", format = "json", data = "<room>")]
-fn create_room(_admin: Admin, room: Json<RoomLogin>, conn: DbConn) -> String {
+#[post("/create_room", format = "form", data = "<room>")]
+fn create_room(_admin: Admin, room: Form<RoomLogin>, conn: DbConn) -> String {
     // Validate the input.
     let valid = |ch: char| ch.is_ascii_alphanumeric() || ch == '_' || ch == '-';
     if room.name.is_empty() || !room.name.chars().all(valid) {
@@ -129,8 +127,8 @@ fn delete_room(_admin: Admin, name: String, conn: DbConn) -> String {
     }
 }
 
-#[post("/change_room_password", format = "json", data = "<form>")]
-fn change_room_password(_admin: Admin, form: Json<RoomLogin>, conn: DbConn) -> String {
+#[post("/change_room_password", format = "form", data = "<form>")]
+fn change_room_password(_admin: Admin, form: Form<RoomLogin>, conn: DbConn) -> String {
     // Validate the input.
     if form.password.is_empty() {
         return "The password cannot be empty.".into();
@@ -145,16 +143,16 @@ fn change_room_password(_admin: Admin, form: Json<RoomLogin>, conn: DbConn) -> S
     }
 }
 
-#[post("/enter_room", format = "json", data = "<login>")]
+#[post("/enter_room", format = "form", data = "<login>")]
 fn enter_room(
-    login: Json<RoomLogin>,
+    login: Form<RoomLogin>,
     session: Session,
     conn: DbConn,
 ) -> Result<Redirect, Flash<Redirect>> {
     if !login.can_log_in(&conn).unwrap_or(false) {
         return Err(Flash::error(
             Redirect::to("/"),
-            "Credentials are not valid.",
+            "You do not have the correct credentials.",
         ));
     }
 
@@ -169,7 +167,7 @@ fn room(name: String, room: Option<Room>) -> Result<Template, Flash<Redirect>> {
     if room.is_none() {
         return Err(Flash::error(
             Redirect::to("/"),
-            "Credentials are not valid.",
+            "You do not have the correct credentials.",
         ));
     }
 
@@ -230,8 +228,7 @@ fn rocket() -> rocket::Rocket {
             routes![
                 active_rooms,
                 admin_login,
-                admin_login_for_admin,
-                admin_login_for_non_admin,
+                admin_login_page,
                 admin_pane_for_admin,
                 admin_pane_for_non_admin,
                 change_room_password,

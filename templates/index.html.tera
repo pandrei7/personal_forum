@@ -10,7 +10,9 @@
 <body>
   <h1>Welcome</h1>
 
-  <form id="loginForm">
+  <div id="info-box">{{ info }}</div>
+
+  <form action="/enter_room" method="post" id="loginForm">
     <label for="name">Room</label>
     <input type="text" name="name" required>
 
@@ -19,8 +21,6 @@
 
     <input type="submit" value="Enter">
   </form>
-
-  <script src="/static/js/index.js"></script>
 </body>
 
 </html>
