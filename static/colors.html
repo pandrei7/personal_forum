@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+
+  <title>Customize colors</title>
+
+  <link href="/static/css/room.css" rel="stylesheet">
+</head>
+
+<body>
+  <h1>Customize colors</h1>
+
+  <div id="colors-pane">
+    <ul id="colors-list">
+    </ul>
+  </div>
+
+  <div id="preview-pane">
+    <div id="message-box">
+      <div class="thread-box"><a>
+          <div class="message threadMessage">
+            <p id="message24" class="messageId">#24.</p>
+            <div class="messageContent">
+              <p>This is a <strong>sample</strong> thread</p>
+            </div>
+          </div>
+        </a>
+        <div class="replies-box">
+          <div class="message">
+            <p id="message25" class="messageId">#25.</p>
+            <div class="messageContent">
+              <p>This is a sample <em><strong>reply</strong></em> to <a href="#message1">@1</a>.</p>
+              <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vivamus ullamcorper. 📖</p>
+              <p>Mi-a căzut slănina de pe pită m-am făcut mangă frec puțin menta păi da, cum să nu știu? o beroasă două
+                trei, și ficatu e mai grei în peretele de sus și când mor am valoare.</p>
+            </div>
+          </div>
+          <div class="send-box">
+            <p></p>
+            <form>
+              <textarea name="content" placeholder="Write your reply here. You can use CommonMark."
+                required=""></textarea>
+              <input type="submit" value="Send!">
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/js/colors.js"></script>
+</body>
+
+</html>

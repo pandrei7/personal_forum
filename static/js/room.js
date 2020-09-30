@@ -1,6 +1,14 @@
+const LIGHT_THEME = {
+    '--background': '#ffffff',
+};
+const DARK_THEME = {
+    '--background': '#bebebe',
+};
+
 let storedMessages = [];
 let storedOpen = new Set();
 let storedRoomsSeen = new Set();
+let storedColors = {};
 
 class Thread {
     firstPost = null;
@@ -219,6 +227,10 @@ const showInfo = function(info) {
     box.textContent = info;
 };
 
+const toggleColorsDropdown = () => {
+    document.getElementById('colors-dropdown-content').classList.toggle('dropdown-show');
+};
+
 const redirectToRoom = async (name) => {
     await storeMessages(); // Save everything before redirecting.
     location.assign(`/room/${name}`);
@@ -241,6 +253,11 @@ const loadPersistent = () => {
         new Set(JSON.parse(localStorage.getItem(`open${roomName}`)) ?? []);
     storedRoomsSeen =
         new Set(JSON.parse(localStorage.getItem('roomsSeen')) ?? []);
+
+    const style = getComputedStyle(document.body);
+    storedColors = JSON.parse(localStorage.getItem('colors')) ?? {
+        '--background': style.getPropertyValue('--background'),
+    };
 }
 
 const storeMessages = () => {
@@ -259,10 +276,27 @@ const storeScroll = () => {
     sessionStorage.setItem('y', document.documentElement.scrollTop);
 };
 
-window.addEventListener('load', () => {
-    loadPersistent();
+const storeColors = () => {
+    localStorage.setItem('colors', JSON.stringify(storedColors));
+};
+
+const applyTheme = (colors) => {
+    for (const [name, value] of Object.entries(colors)) {
+        document.documentElement.style.setProperty(name, value);
+    }
+};
+
+const changeTheme = (colors) => {
+    applyTheme(colors);
+    storedColors = colors;
+    storeColors(colors);
+};
+
+window.addEventListener('load', async () => {
+    await loadPersistent();
+    applyTheme(storedColors);
     storedRoomsSeen.add(roomName);
-    storeRoomsSeen();
+    await storeRoomsSeen();
     populateRoomsSeen();
 });
 

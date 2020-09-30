@@ -16,6 +16,17 @@
     <a href="/">Personal forum</a>
     <input list="rooms-seen" id="go-to-room" placeholder="Go to another room">
     <datalist id="rooms-seen"></datalist>
+
+    <div id="colors-dropdown">
+      <button onclick="toggleColorsDropdown();" id="colors-dropdown-button">🖌️</button>
+      <div id="colors-dropdown-content" class="dropdown-content">
+        <button onclick="changeTheme(LIGHT_THEME);">Light</button>
+        <button onclick="changeTheme(DARK_THEME);">Dark</button>
+        <form action="/colors">
+          <button>Customize</button>
+        </form>
+      </div>
+    </div>
   </nav>
 
   <h1>Welcome to '{{ name }}'</h1>

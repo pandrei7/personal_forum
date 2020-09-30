@@ -7,6 +7,10 @@
   box-sizing: border-box;
 }
 
+:root {
+    --background: #ffffff;
+}
+
 @media screen and (min-width: 800px) {
     body {
         padding: 0 15rem;
@@ -17,6 +21,10 @@
     body {
         padding: 0 0.5rem;
     }
+}
+
+body {
+    background: var(--background);
 }
 
 nav {
@@ -39,6 +47,39 @@ input[type=submit] {
 
 textarea {
     font-size: calc(1rem + 0.1vw);
+}
+
+#colors-dropdown-button {
+    background: pink;
+}
+
+#colors-dropdown {
+    position: relative;
+    display: inline-block;
+    float: right;
+}
+
+.dropdown-content {
+    display: none;
+    position: absolute;
+    z-index: 1;
+    right: 0;
+}
+
+.dropdown-content button {
+    background: khaki;
+    display: block;
+    width: 100%;
+}
+
+.dropdown-content a {
+    background: khaki;
+    display: block;
+    width: 100%;
+}
+
+.dropdown-show {
+    display: block;
 }
 
 #newThreadBox {

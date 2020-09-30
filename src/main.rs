@@ -215,6 +215,11 @@ fn post(
         .map_err(|_| Status::InternalServerError)
 }
 
+#[get("/colors")]
+fn colors() -> Result<NamedFile, NotFound<String>> {
+    static_file(PathBuf::from("colors.html"))
+}
+
 #[get("/static/<file..>", rank = 6)]
 fn static_file(file: PathBuf) -> Result<NamedFile, NotFound<String>> {
     let path = Path::new("static/").join(file);
@@ -232,6 +237,7 @@ fn rocket() -> rocket::Rocket {
                 admin_pane_for_admin,
                 admin_pane_for_non_admin,
                 change_room_password,
+                colors,
                 create_room,
                 delete_room,
                 enter_room,
