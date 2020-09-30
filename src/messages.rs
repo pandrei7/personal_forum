@@ -43,6 +43,9 @@ pub struct Message {
     timestamp: i64,
     /// The id of the user author.
     /// It's optional because, as sessions time out, messages can "forget" their author.
+    /// It should be skipped when sending messages to clients, because it might
+    /// allow attackers to impersonate other users, even admins.
+    #[serde(skip_serializing)]
     author: Option<String>,
     /// Messages which start new threads have this field set to `None`.
     /// Replies hold the id of the message which started their thread.
