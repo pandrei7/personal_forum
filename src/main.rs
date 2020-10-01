@@ -1,6 +1,7 @@
 #![feature(proc_macro_hygiene, decl_macro)]
 
 mod admins;
+mod constraints;
 mod db;
 mod messages;
 mod rooms;
@@ -19,6 +20,7 @@ use rocket_contrib::json::Json;
 use rocket_contrib::templates::Template;
 
 use admins::{Admin, AdminLogin};
+use constraints::RoomName;
 use db::{DbConn, DbInitFairing};
 use messages::{Message, MessageJson, Updates};
 use rooms::{Room, RoomLogin};
@@ -30,7 +32,9 @@ fn index(flash: Option<FlashMessage>) -> Template {
     let mut context = HashMap::new();
     context.insert(
         "info",
-        flash.map(|msg| msg.msg().to_string()).unwrap_or_else(|| "".into()),
+        flash
+            .map(|msg| msg.msg().to_string())
+            .unwrap_or_else(|| "".into()),
     );
     Template::render("index", &context)
 }
@@ -41,7 +45,9 @@ fn admin_login_page(flash: Option<FlashMessage>) -> Template {
     let mut context = HashMap::new();
     context.insert(
         "info",
-        flash.map(|msg| msg.msg().to_string()).unwrap_or_else(|| "".into()),
+        flash
+            .map(|msg| msg.msg().to_string())
+            .unwrap_or_else(|| "".into()),
     );
     Template::render("admin_login", &context)
 }
@@ -102,9 +108,8 @@ fn active_rooms(_admin: Admin, conn: DbConn) -> Result<Json<Vec<String>>, Status
 #[post("/create_room", format = "form", data = "<room>")]
 fn create_room(_admin: Admin, room: Form<RoomLogin>, conn: DbConn) -> String {
     // Validate the input.
-    let valid = |ch: char| ch.is_ascii_alphanumeric() || ch == '_' || ch == '-';
-    if room.name.is_empty() || !room.name.chars().all(valid) {
-        return "The room name contains invalid characters.".into();
+    if let Err(reason) = RoomName::parse(&room.name) {
+        return reason;
     }
     if room.password.is_empty() {
         return "The password cannot be empty.".into();
@@ -120,9 +125,9 @@ fn create_room(_admin: Admin, room: Form<RoomLogin>, conn: DbConn) -> String {
 }
 
 #[delete("/delete_room", data = "<name>")]
-fn delete_room(_admin: Admin, name: String, conn: DbConn) -> String {
+fn delete_room(_admin: Admin, name: RoomName, conn: DbConn) -> String {
     match Room::delete_room(&conn, &name) {
-        Ok(_) => format!("Room {} deleted successfully.", name),
+        Ok(_) => format!("Room {} deleted successfully.", &name),
         Err(reason) => reason,
     }
 }
@@ -163,7 +168,7 @@ fn enter_room(
 }
 
 #[get("/room/<name>")]
-fn room(name: String, room: Option<Room>) -> Result<Template, Flash<Redirect>> {
+fn room(name: RoomName, room: Option<Room>) -> Result<Template, Flash<Redirect>> {
     if room.is_none() {
         return Err(Flash::error(
             Redirect::to("/"),
@@ -179,7 +184,7 @@ fn room(name: String, room: Option<Room>) -> Result<Template, Flash<Redirect>> {
 
 #[get("/room/<name>/updates")]
 fn get_message_updates(
-    name: String,
+    name: RoomName,
     room: Option<Room>,
     session: Session,
     conn: DbConn,
@@ -201,7 +206,7 @@ fn get_message_updates(
 
 #[post("/room/<_name>/post", format = "json", data = "<message>")]
 fn post(
-    _name: String,
+    _name: RoomName,
     room: Option<Room>,
     message: Json<MessageJson>,
     session: Session,
@@ -209,6 +214,10 @@ fn post(
 ) -> Result<String, Status> {
     let room = room.ok_or(Status::Unauthorized)?;
     let message = message.into_inner();
+
+    if message.content.len() > constraints::MAX_MESSAGE_LEN {
+        return Ok("Your message is too long.".into());
+    }
 
     room.add_message(&conn, message.content, session.id(), message.reply_to)
         .map(|_| "Your message has been saved".into())
