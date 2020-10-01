@@ -4,7 +4,11 @@
 
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+
   <title>Admin pane</title>
+
+  <link href="/static/css/base.css" rel="stylesheet">
 </head>
 
 <body>
@@ -13,14 +17,13 @@
   <p>You are logged in as admin.</p>
 
   <h2>Server status</h2>
-  <div id="serverStatus"></div>
-  <hr>
+  <div id="server-status-box"></div>
 
   <h2>Rooms</h2>
   <div>
-    <p id="createRoomStatus"></p>
+    <p id="create-room-status"></p>
 
-    <form id="createRoomForm">
+    <form id="create-room-form">
       <legend>Create a new room.</legend>
 
       <label for="name">Name</label>
@@ -33,9 +36,9 @@
     </form>
   </div>
 
-  <div id="roomsBox"></div>
-  <hr>
+  <div id="rooms-box"></div>
 
+  <script src="/static/js/base.js"></script>
   <script src="/static/js/admin_pane.js"></script>
 </body>
 

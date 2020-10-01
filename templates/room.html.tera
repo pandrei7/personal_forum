@@ -8,7 +8,7 @@
 
   <title>Room '{{ name }}'</title>
 
-  <link href="/static/css/room.css" rel="stylesheet">
+  <link href="/static/css/base.css" rel="stylesheet">
 </head>
 
 <body>
@@ -31,18 +31,18 @@
 
   <h1>Welcome to '{{ name }}'</h1>
 
-  <div id="newThreadBox">
-    <p id="newThreadInfoBox"></p>
+  <div id="new-thread-box">
+    <p id="new-thread-info"></p>
 
-    <form id="newThreadForm">
+    <form id="new-thread-form">
       <textarea name="content" placeholder="Type a new thread message here." required></textarea>
       <input type="submit" value="Start the thread">
     </form>
   </div>
 
   <div id="search-box">
-    <input type="text" id="searchText" placeholder="Write your search terms here.">
-    <button id="clearSearchButton">Clear</button>
+    <input type="text" id="search-text" placeholder="Write your search terms here.">
+    <button id="clear-search-button">Clear</button>
   </div>
 
   <div id="message-box"></div>
@@ -53,6 +53,7 @@
 
   <!-- Custom scripts -->
   <script>const roomName = '{{ name }}';</script>
+  <script src="/static/js/base.js"></script>
   <script src="/static/js/room.js"></script>
 </body>
 

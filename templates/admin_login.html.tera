@@ -4,7 +4,11 @@
 
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+
   <title>Admin login</title>
+
+  <link href="/static/css/base.css" rel="stylesheet">
 </head>
 
 <body>
@@ -12,7 +16,7 @@
 
   <div id="info-box">{{ info }}</div>
 
-  <form action="/admin_login" method="post" id="loginForm">
+  <form action="/admin_login" method="post" id="admin-login-form">
     <label for="username">Username: </label>
     <input type="text" name="username" required>
 
@@ -21,6 +25,8 @@
 
     <input type="submit" value="Login">
   </form>
+
+  <script src="/static/js/base.js"></script>
 </body>
 
 </html>

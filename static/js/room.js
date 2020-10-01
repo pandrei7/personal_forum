@@ -8,7 +8,6 @@ const DARK_THEME = {
 let storedMessages = [];
 let storedOpen = new Set();
 let storedRoomsSeen = new Set();
-let storedColors = {};
 
 class Thread {
     firstPost = null;
@@ -46,7 +45,7 @@ class Thread {
 
         const firstPost = document.createElement('a');
         const firstMessageBox = makeMessageBox(this.firstPost);
-        firstMessageBox.classList.add('threadMessage');
+        firstMessageBox.classList.add('thread-message');
         firstPost.appendChild(firstMessageBox);
         firstPost.addEventListener('click', function() {
             if (repliesBox.hidden) {
@@ -85,11 +84,11 @@ const addMentions = (node) => {
 const makeMessageBox = function(message) {
     const id = document.createElement('p');
     id.id = `message${message.id}`;
-    id.setAttribute('class', 'messageId');
+    id.setAttribute('class', 'message-id');
     id.textContent = `#${message.id}.`;
 
     const content = document.createElement('div');
-    content.setAttribute('class', 'messageContent');
+    content.setAttribute('class', 'message-content');
     content.innerHTML = message.content;
     addMentions(content);
 
@@ -178,7 +177,7 @@ const placeMessages = function(messages) {
         }
     }
 
-    const searchText = document.getElementById('searchText').value;
+    const searchText = document.getElementById('search-text').value;
 
     class OrderedElement {
         element = {};
@@ -223,7 +222,7 @@ const placeMessages = function(messages) {
 };
 
 const showInfo = function(info) {
-    const box = document.getElementById('infoBox');
+    const box = document.getElementById('info-box');
     box.textContent = info;
 };
 
@@ -253,11 +252,6 @@ const loadPersistent = () => {
         new Set(JSON.parse(localStorage.getItem(`open${roomName}`)) ?? []);
     storedRoomsSeen =
         new Set(JSON.parse(localStorage.getItem('roomsSeen')) ?? []);
-
-    const style = getComputedStyle(document.body);
-    storedColors = JSON.parse(localStorage.getItem('colors')) ?? {
-        '--background': style.getPropertyValue('--background'),
-    };
 }
 
 const storeMessages = () => {
@@ -276,33 +270,22 @@ const storeScroll = () => {
     sessionStorage.setItem('y', document.documentElement.scrollTop);
 };
 
-const storeColors = () => {
-    localStorage.setItem('colors', JSON.stringify(storedColors));
-};
-
-const applyTheme = (colors) => {
-    for (const [name, value] of Object.entries(colors)) {
-        document.documentElement.style.setProperty(name, value);
-    }
-};
-
-const changeTheme = (colors) => {
-    applyTheme(colors);
+const changeTheme = async (colors) => {
     storedColors = colors;
-    storeColors(colors);
+    await storeColors();
+    applyStoredColors();
 };
 
 window.addEventListener('load', async () => {
     await loadPersistent();
-    applyTheme(storedColors);
     storedRoomsSeen.add(roomName);
     await storeRoomsSeen();
     populateRoomsSeen();
 });
 
 window.addEventListener('load', async () => {
-    const infoBox = document.getElementById('newThreadInfoBox');
-    const form = document.getElementById('newThreadForm');
+    const info = document.getElementById('new-thread-info');
+    const form = document.getElementById('new-thread-form');
 
     form.onsubmit = async (e) => {
         e.preventDefault();
@@ -323,11 +306,11 @@ window.addEventListener('load', async () => {
             }
             return response.text();
         })
-        .then(info => {
-            infoBox.textContent = info;
+        .then(response => {
+            info.textContent = response;
             updateMessages();
         })
-        .catch(error => infoBox.textContent = error);
+        .catch(error => info.textContent = error);
     };
 });
 
@@ -342,12 +325,12 @@ window.addEventListener('load', () => {
         }
     });
 
-    const textBox = document.getElementById('searchText');
+    const textBox = document.getElementById('search-text');
     textBox.addEventListener('input', function() {
         placeMessages(storedMessages);
     });
 
-    const clearSearchButton = document.getElementById('clearSearchButton');
+    const clearSearchButton = document.getElementById('clear-search-button');
     clearSearchButton.addEventListener('click', function() {
         textBox.value = '';
         textBox.dispatchEvent(new Event('input'));

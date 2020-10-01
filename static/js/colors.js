@@ -1,23 +1,3 @@
-let storedColors = {};
-
-const loadStoredColors = () => {
-    const style = getComputedStyle(document.body);
-
-    storedColors = JSON.parse(localStorage.getItem('colors')) ?? {
-        '--background': style.getPropertyValue('--background'),
-    };
-};
-
-const storeColors = () => {
-    localStorage.setItem('colors', JSON.stringify(storedColors));
-};
-
-const applyColors = () => {
-    for (const [name, value] of Object.entries(storedColors)) {
-        document.documentElement.style.setProperty(name, value);
-    }
-};
-
 const makeColorParam = (name, color) => {
     const input = document.createElement('input');
     input.type = 'color'
@@ -39,8 +19,4 @@ const populateColorsList = () => {
     colorsList.appendChild(makeColorParam('--background', storedColors['--background']));
 };
 
-window.addEventListener('load', async () => {
-    await loadStoredColors();
-    await applyColors();
-    populateColorsList();
-});
+window.addEventListener('load', populateColorsList);

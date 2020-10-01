@@ -1,5 +1,5 @@
 const printStatus = function() {
-    const serverStatus = document.getElementById('serverStatus');
+    const serverStatus = document.getElementById('server-status-box');
     fetch('/session_count')
         .then(response => {
             if (response.status !== 200) {
@@ -50,7 +50,7 @@ const placeRooms = function() {
         return item;
     };
 
-    const roomsBox = document.getElementById('roomsBox');
+    const roomsBox = document.getElementById('rooms-box');
     roomsBox.innerHTML = '<p>Active rooms:</p>';
 
     fetch('/active_rooms')
@@ -140,7 +140,7 @@ window.addEventListener('load', printStatus);
 window.addEventListener('load', placeRooms);
 
 window.addEventListener('load', function() {
-    const form = document.getElementById('createRoomForm');
+    const form = document.getElementById('create-room-form');
     form.addEventListener('submit', async (event) => {
         event.preventDefault();
 
@@ -161,11 +161,11 @@ window.addEventListener('load', function() {
             return response.text();
         })
         .then(status => {
-            document.getElementById('createRoomStatus').textContent = status;
+            document.getElementById('create-room-status').textContent = status;
             placeRooms();
         })
         .catch(error => {
-            document.getElementById('createRoomStatus').textContent = error;
+            document.getElementById('create-room-status').textContent = error;
         });
     });
 });

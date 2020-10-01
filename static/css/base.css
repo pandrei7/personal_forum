@@ -1,3 +1,4 @@
+/* "Reset" CSS */
 * {
     margin: 0;
     padding: 0;
@@ -7,10 +8,12 @@
   box-sizing: border-box;
 }
 
+/* Default colors */
 :root {
     --background: #ffffff;
 }
 
+/* Default style */
 @media screen and (min-width: 800px) {
     body {
         padding: 0 15rem;
@@ -82,7 +85,7 @@ textarea {
     display: block;
 }
 
-#newThreadBox {
+#new-thread-box {
     background: orangered;
     margin-top: 0.5rem;
     margin-bottom: 1rem;
@@ -90,15 +93,15 @@ textarea {
     border-radius: 5px;
 }
 
-#newThreadForm {
+#new-thread-form {
     display: flex;
 }
 
-#newThreadForm textarea {
+#new-thread-form textarea {
     flex: 8;
 }
 
-#newThreadForm input {
+#new-thread-form input {
     flex: 2;
 }
 
@@ -111,12 +114,12 @@ textarea {
     border-radius: 5px;
 }
 
-#searchText {
+#search-text {
     font-size: calc(1rem + 0.1vw);
     flex: 9;
 }
 
-#clearSearchButton {
+#clear-search-button {
     background: blue;
     font-size: calc(1rem + 0.1vw);
     flex: 1;
@@ -161,18 +164,18 @@ textarea {
     max-width: 100%;
 }
 
-.threadMessage {
+.thread-message {
     background: orangered;
     margin-bottom: 0;
 }
 
-.messageId {
+.message-id {
     display: inline;
     vertical-align: top;
     font-weight: bold;
 }
 
-.messageContent {
+.message-content {
     display: inline-block;
     margin-left: 1rem;
 }

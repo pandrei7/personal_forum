@@ -4,7 +4,11 @@
 
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+
   <title>Personal forum</title>
+
+  <link href="/static/css/base.css" rel="stylesheet">
 </head>
 
 <body>
@@ -12,7 +16,7 @@
 
   <div id="info-box">{{ info }}</div>
 
-  <form action="/enter_room" method="post" id="loginForm">
+  <form action="/enter_room" method="post" id="room-login-form">
     <label for="name">Room</label>
     <input type="text" name="name" required>
 
@@ -21,6 +25,8 @@
 
     <input type="submit" value="Enter">
   </form>
+
+  <script src="/static/js/base.js"></script>
 </body>
 
 </html>
