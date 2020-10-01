@@ -16,27 +16,35 @@
 
   <p>You are logged in as admin.</p>
 
-  <h2>Server status</h2>
-  <div id="server-status-box"></div>
-
-  <h2>Rooms</h2>
   <div>
-    <p id="create-room-status"></p>
-
-    <form id="create-room-form">
-      <legend>Create a new room.</legend>
-
-      <label for="name">Name</label>
-      <input type="text" name="name" required>
-
-      <label for="password">Password</label>
-      <input type="text" name="password" required>
-
-      <input type="submit" value="Create!">
-    </form>
+    <h2>Server status</h2>
+    <div id="server-status-box"></div>
   </div>
 
-  <div id="rooms-box"></div>
+  <div>
+    <h2>Rooms</h2>
+
+    <div>
+      <p id="create-room-status"></p>
+
+      <form id="create-room-form">
+        <legend>Create a new room.</legend>
+
+        <label for="name">Name</label>
+        <input type="text" name="name" required>
+
+        <label for="password">Password</label>
+        <input type="text" name="password" required>
+
+        <input type="submit" value="Create!">
+      </form>
+    </div>
+
+    <div>
+      <p>Active rooms:</p>
+      <ul id="active-rooms-list"></ul>
+    </div>
+  </div>
 
   <script src="/static/js/base.js"></script>
   <script src="/static/js/admin_pane.js"></script>

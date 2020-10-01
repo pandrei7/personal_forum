@@ -20,8 +20,8 @@
     <div id="colors-dropdown">
       <button onclick="toggleColorsDropdown();" id="colors-dropdown-button">🖌️</button>
       <div id="colors-dropdown-content" class="dropdown-content">
-        <button onclick="changeTheme(LIGHT_THEME);">Light</button>
-        <button onclick="changeTheme(DARK_THEME);">Dark</button>
+        <button id="light-theme-button">Light</button>
+        <button id="dark-theme-button">Dark</button>
         <form action="/colors">
           <button>Customize</button>
         </form>
@@ -29,23 +29,33 @@
     </div>
   </nav>
 
-  <h1>Welcome to '{{ name }}'</h1>
+  <main>
+    <h1>Welcome to '{{ name }}'</h1>
 
-  <div id="new-thread-box">
-    <p id="new-thread-info"></p>
+    <div id="new-thread-box">
+      <p id="new-thread-info"></p>
 
-    <form id="new-thread-form">
-      <textarea name="content" placeholder="Type a new thread message here." required></textarea>
-      <input type="submit" value="Start the thread">
-    </form>
-  </div>
+      <form id="new-thread-form">
+        <textarea name="content" placeholder="Type a new thread message here." required></textarea>
+        <input type="submit" value="Start the thread">
+      </form>
+    </div>
 
-  <div id="search-box">
-    <input type="text" id="search-text" placeholder="Write your search terms here.">
-    <button id="clear-search-button">Clear</button>
-  </div>
+    <div id="sort-box">
+      <div id="search-box">
+        <input type="text" id="search-text" placeholder="Write your search phrase here.">
+        <button id="clear-search-button">x</button>
+      </div>
+      <div id="order-box">
+        <select id="thread-order" name="thread-order">
+          <option value="old">Oldest first</option>
+          <option value="new">Newest first</option>
+        </select>
+      </div>
+    </div>
 
-  <div id="message-box"></div>
+    <div id="message-box"></div>
+  </main>
 
   <!-- Dependencies -->
   <script src="https://cdn.jsdelivr.net/npm/mark.js@8.11.1/dist/mark.min.js"></script>

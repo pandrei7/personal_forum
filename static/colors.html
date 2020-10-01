@@ -20,18 +20,29 @@
 
   <div id="preview-pane">
     <div id="message-box">
-      <div class="thread-box">
+      <div class="thread">
         <a>
-          <div class="message thread-message">
-            <p id="message24" class="message-id">#24.</p>
-            <div class="message-content">
-              <p>This is a <strong>sample</strong> thread</p>
+          <div class="thread-starter">
+            <div class="message">
+              <div class="message-info">
+                <p id="message24" class="message-id">#24</p>
+                <p class="message-timestamp">30 Sep 2020<br>20:43</p>
+              </div>
+              <div class="message-content">
+                <p>This is a <strong>sample</strong> thread</p>
+              </div>
+            </div>
+            <div class="thread-info">
+              <p>5 replies</p>
             </div>
           </div>
         </a>
-        <div class="replies-box">
+        <div class="replies">
           <div class="message">
-            <p id="message25" class="message-id">#25.</p>
+            <div class="message-info">
+              <p id="message25" class="message-id">#25</p>
+              <p class="message-timestamp">30 Sep 2020<br>20:51</p>
+            </div>
             <div class="message-content">
               <p>This is a sample <em><strong>reply</strong></em> to <a href="#message1">@1</a>.</p>
               <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vivamus ullamcorper. 📖</p>
@@ -39,30 +50,15 @@
                 trei, și ficatu e mai grei în peretele de sus și când mor am valoare.</p>
             </div>
           </div>
-          <div class="message">
-            <p id="message26" class="message-id">#26.</p>
-            <div class="message-content">
-              <p>Para1</p>
-              <p>Para2</p>
-            </div>
-          </div>
-          <div class="message">
-            <p id="message27" class="message-id">#27.</p>
-            <div class="message-content">
-              <p>Lots</p>
-              <p>of</p>
-              <p>space</p>
-            </div>
-          </div>
-          <div class="send-box">
-            <p></p>
-            <form>
-              <textarea name="content" placeholder="Write your reply here. You can use CommonMark."
-                required=""></textarea>
-              <input type="submit" value="Send!">
-            </form>
-          </div>
         </div>
+      </div>
+      <div class="replier">
+        <p class="replier-info"></p>
+        <form>
+          <textarea name="content" placeholder="Write your reply here.
+You can use CommonMark." required=""></textarea>
+          <input type="submit" value="Send">
+        </form>
       </div>
     </div>
   </div>
