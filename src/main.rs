@@ -215,6 +215,9 @@ fn post(
     let room = room.ok_or(Status::Unauthorized)?;
     let message = message.into_inner();
 
+    if message.content.is_empty() {
+        return Ok("Your message cannot be empty.".into());
+    }
     if message.content.len() > constraints::MAX_MESSAGE_LEN {
         return Ok("Your message is too long.".into());
     }
