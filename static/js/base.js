@@ -2,6 +2,9 @@
 
 /**
  * Loads the chosen colors from storage and returns them.
+ *
+ * If there are no colors stored, the default values are returned.
+ *
  * @return {Promise<object>} The object containing the color properties.
  */
 const loadStoredColors = async () => {
@@ -43,5 +46,6 @@ const changeColors = (newColors) => {
 // Make sure the chosen colors are applied to every page, when loaded.
 window.addEventListener('load', async () => {
     const colors = await loadStoredColors();
+    storeColors(colors); // Store the defaults if they are not stored yet.
     applyColors(colors);
 });

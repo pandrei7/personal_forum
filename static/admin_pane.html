@@ -9,42 +9,45 @@
   <title>Admin pane</title>
 
   <link href="/static/css/base.css" rel="stylesheet">
+  <link href="/static/css/admin_pane.css" rel="stylesheet">
 </head>
 
 <body>
-  <h1>Admin pane</h1>
+  <main>
+    <h1>Admin pane</h1>
 
-  <p>You are logged in as admin.</p>
+    <p>You are logged in as admin.</p>
 
-  <div>
-    <h2>Server status</h2>
-    <div id="server-status-box"></div>
-  </div>
+    <section>
+      <h2>Server status</h2>
+      <div id="server-status-box"></div>
+    </section>
 
-  <div>
-    <h2>Rooms</h2>
+    <section>
+      <h2>Rooms</h2>
 
-    <div>
-      <p id="create-room-status"></p>
+      <div id="create-room-box">
+        <h3>Create a new room.</h3>
 
-      <form id="create-room-form">
-        <legend>Create a new room.</legend>
+        <p id="create-room-status"></p>
 
-        <label for="name">Name</label>
-        <input type="text" name="name" required>
+        <form id="create-room-form">
+          <label for="name">Name:</label>
+          <input type="text" name="name" required>
 
-        <label for="password">Password</label>
-        <input type="text" name="password" required>
+          <label for="password">Password:</label>
+          <input type="text" name="password" required>
 
-        <input type="submit" value="Create!">
-      </form>
-    </div>
+          <input type="submit" value="Create!">
+        </form>
+      </div>
 
-    <div>
-      <p>Active rooms:</p>
-      <ul id="active-rooms-list"></ul>
-    </div>
-  </div>
+      <div id="active-rooms-box">
+        <h3>Active rooms:</h3>
+        <ul id="active-rooms-list"></ul>
+      </div>
+    </section>
+  </main>
 
   <script src="/static/js/base.js"></script>
   <script src="/static/js/admin_pane.js"></script>

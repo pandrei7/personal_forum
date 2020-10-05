@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@500&family=Lato&family=Roboto+Slab:wght@500&display=swap');
+
 /* "Reset" CSS */
 * {
     margin: 0;
@@ -8,200 +10,16 @@
   box-sizing: border-box;
 }
 
-/* Default colors */
+/* Default style */
 :root {
     --background: #ffffff;
 }
 
-/* Default style */
-@media screen and (min-width: 800px) {
-    main {
-        padding: 0 15rem;
-    }
-
-    /* Only display the message refresh button on smaller screens. */
-    #refresh-button {
-        display: none;
-    }
-}
-
-@media screen and (max-width: 800px) {
-    main {
-        padding: 0 0.5rem;
-    }
+html {
+    font-size: 100%;
 }
 
 body {
     background: var(--background);
-}
-
-nav {
-    background: khaki;
-    font-size: calc(1.1rem + 0.3vw);
-    padding: .25rem .5rem;
-}
-
-h1 {
-    font-size: calc(1.5rem + 3vw);
-}
-
-p {
-    font-size: calc(1.1rem + 0.3vw);
-}
-
-input[type=submit] {
-    font-size: calc(1rem + 0.1vw);
-}
-
-textarea {
-    font-size: calc(1rem + 0.1vw);
-}
-
-#colors-dropdown-button {
-    background: pink;
-}
-
-#colors-dropdown {
-    position: relative;
-    display: inline-block;
-    float: right;
-}
-
-.dropdown-content {
-    display: none;
-    position: absolute;
-    z-index: 1;
-    right: 0;
-}
-
-.dropdown-content button {
-    background: khaki;
-    display: block;
-    width: 100%;
-}
-
-.dropdown-content a {
-    background: khaki;
-    display: block;
-    width: 100%;
-}
-
-.colors-dropdown-show {
-    display: block;
-}
-
-#new-thread-box {
-    background: orangered;
-    margin-top: 0.5rem;
-    margin-bottom: 1rem;
-    padding: 0.3rem 1rem;
-    border-radius: 5px;
-}
-
-#new-thread-form {
-    display: flex;
-}
-
-#new-thread-form textarea {
-    flex: 8;
-}
-
-#new-thread-form input {
-    flex: 2;
-}
-
-#search-box {
-    background: orangered;
-    display: flex;
-    margin-top: 0.5rem;
-    margin-bottom: 1rem;
-    padding: 0.3rem 1rem;
-    border-radius: 5px;
-}
-
-#search-text {
-    font-size: calc(1rem + 0.1vw);
-    flex: 9;
-}
-
-#clear-search-button {
-    background: blue;
-    font-size: calc(1rem + 0.1vw);
-    flex: 1;
-}
-
-#refresh-button {
-    font-size: 1.2rem;
-    background: yellow;
-    padding: 0.3rem;
-    position: fixed;
-    bottom: 1rem;
-    right: 1rem;
-}
-
-.thread {
-    margin-bottom: 1rem;
-}
-
-.replies {
-    overflow: auto;
-    max-height: 420px;
-    margin-left: 1rem;
-}
-
-.replier {
-    background: dodgerblue;
-    width: 100%;
-    margin-bottom: 0.1rem;
-    padding: 0.3rem;
-    border-radius: 5px;
-}
-
-.replier textarea {
-    width: 100%;
-    resize: vertical;
-    padding: 0.2rem;
-}
-
-.replier input[type=submit] {
-    width: 100%;
-}
-
-.thread-starter {
-    background: orangered;
-    margin-bottom: 0;
-    border-radius: 0 0 5px 5px;
-}
-
-.message {
-    background: cadetblue;
-    overflow: auto;
-    margin-bottom: 0.1rem;
-    border-radius: 5px;
-    display: flex;
-}
-
-.message img {
-    max-width: 100%;
-}
-
-.message-info {
-    background: green;
-    margin: 0;
-    flex: 1;
-}
-
-.message-content {
-    background: cyan;
-    margin: 0;
-    flex: 4;
-}
-
-.message-id {
-    vertical-align: top;
-    font-weight: bold;
-}
-
-.message-content {
-    display: inline-block;
+    font-family: 'Roboto Slab', serif;
 }

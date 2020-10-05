@@ -72,9 +72,10 @@ class Message {
         const year = date.getFullYear();
 
         const hours = date.getHours();
-        const minutes = date.getMinutes();
+        // Minutes should have leading zeros.
+        const minutes = String(date.getMinutes()).padStart(2, '0');
 
-        return `${day} ${month} ${year}<br>${hours}:${minutes}`;
+        return `${day} ${month} ${year} - ${hours}:${minutes}`;
     }
 }
 
@@ -240,13 +241,21 @@ class Replier {
         const form = document.createElement('form');
         form.innerHTML = `
             <textarea name="content" placeholder="Write your reply here.\nYou can use CommonMark." required>${this.content}</textarea>
-            <input type="submit" value="Send">
+            <div class="replier-controls">
+                <input type="submit" value="Send">
+                <input type="reset" value="Clear">
+            </div>
         `;
         form.onsubmit = async (event) => {
             event.preventDefault();
             await this.send(form);
             await refreshMessages();
             scrollToStoredPos();
+        };
+        form.onreset = (event) => {
+            event.preventDefault();
+            this.content = '';
+            form.getElementsByTagName('textarea')[0].value = '';
         };
 
         const replier = document.createElement('div');
@@ -485,11 +494,11 @@ window.addEventListener('load', () => {
     // Set up the button which displays the dropdown.
     const content = document.getElementById('colors-dropdown-content');
     const button = document.getElementById('colors-dropdown-button');
-    button.onclick = () => content.classList.toggle('colors-dropdown-show');
+    button.onclick = () => content.classList.toggle('dropdown-show');
     window.addEventListener('click', (event) => {
         // Hide the dropdown when the user clicks outside of it.
         if (event.target !== button) {
-            content.classList.remove('colors-dropdown-show');
+            content.classList.remove('dropdown-show');
         }
     });
 

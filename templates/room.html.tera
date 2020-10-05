@@ -9,48 +9,59 @@
   <title>Room '{{ name }}'</title>
 
   <link href="/static/css/base.css" rel="stylesheet">
+  <link href="/static/css/room.css" rel="stylesheet">
 </head>
 
 <body>
   <nav>
-    <a href="/">Personal forum</a>
-    <input list="rooms-seen" id="go-to-room" placeholder="Go to another room">
-    <datalist id="rooms-seen"></datalist>
+    <div id="navbar-content">
+      <p id="go-home"><a href="/" id="go-home">Home</a></p>
+      <input list="rooms-seen" id="go-to-room" placeholder="Go to another room">
+      <datalist id="rooms-seen"></datalist>
 
-    <div id="colors-dropdown">
-      <button onclick="toggleColorsDropdown();" id="colors-dropdown-button">🖌️</button>
-      <div id="colors-dropdown-content" class="dropdown-content">
-        <button id="light-theme-button">Light</button>
-        <button id="dark-theme-button">Dark</button>
-        <form action="/colors">
-          <button>Customize</button>
-        </form>
+      <div id="colors-dropdown">
+        <button onclick="toggleColorsDropdown();" id="colors-dropdown-button">🖌️</button>
+        <div id="colors-dropdown-content" class="dropdown-content">
+          <button id="light-theme-button">Light</button>
+          <button id="dark-theme-button">Dark</button>
+          <form action="/colors">
+            <button id="customize-colors-button">Customize</button>
+          </form>
+        </div>
       </div>
     </div>
   </nav>
 
   <main>
-    <h1>Welcome to '{{ name }}'</h1>
+    <h1>Welcome to room '{{ name }}'.</h1>
 
     <div id="new-thread-box">
+      <h2>Start a thread</h2>
+
       <p id="new-thread-info"></p>
 
       <form id="new-thread-form">
         <textarea name="content" placeholder="Type a new thread message here." required></textarea>
-        <input type="submit" value="Start the thread">
+        <div id="new-thread-controls">
+          <input type="submit" value="Send">
+          <input type="reset" value="Clear">
+        </div>
       </form>
     </div>
 
     <div id="sort-box">
-      <div id="search-box">
-        <input type="text" id="search-text" placeholder="Write your search phrase here.">
-        <button id="clear-search-button">x</button>
-      </div>
-      <div id="order-box">
-        <select id="thread-order" name="thread-order">
-          <option value="old">Oldest first</option>
-          <option value="new">Newest first</option>
-        </select>
+      <h2>Sort the threads</h2>
+      <div id="sort-controls">
+        <div id="search-box">
+          <input type="text" id="search-text" placeholder="Write your search phrase here.">
+          <button id="clear-search-button">X</button>
+        </div>
+        <div id="order-box">
+          <select id="thread-order" name="thread-order">
+            <option value="old">Oldest first</option>
+            <option value="new">Newest first</option>
+          </select>
+        </div>
       </div>
     </div>
 

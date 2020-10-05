@@ -1,0 +1,23 @@
+main {
+    margin-top: 2em;
+    padding: 0 .2em;
+}
+
+main h1:first-child {
+    padding-left: .5em;
+}
+
+#colors-pane {
+    border-radius: 5px;
+}
+
+#colors-list {
+    border-radius: 5px;
+    margin: 1em auto;
+}
+
+#colors-list li {
+    display: grid;
+    grid-template-columns: 4em auto;
+    padding: .5em .7em;
+}

@@ -47,25 +47,33 @@ const displayActiveRooms = (rooms) => {
      * @return {HTMLElement} The list item element.
      */
     const createListItem = (name) => {
-        const description = document.createElement('p');
-        description.textContent = name;
-
-        const deleteButton = document.createElement('button');
-        deleteButton.textContent = 'Delete room!';
-        deleteButton.addEventListener('click', () => deleteRoom(name));
+        const roomName = document.createElement('p');
+        roomName.classList.add('room-name');
+        roomName.textContent = name;
 
         const input = document.createElement('input');
         input.type = 'text';
+        input.classList.add('new-password');
+        input.placeholder = 'Type the new password here.';
 
         const changeButton = document.createElement('button');
-        changeButton.textContent = 'Change password!';
+        changeButton.textContent = 'Change';
         changeButton.addEventListener('click', () => changePassword(name, input.value));
 
+        const deleteButton = document.createElement('button');
+        deleteButton.classList.add('delete-button');
+        deleteButton.textContent = 'Delete room!';
+        deleteButton.addEventListener('click', () => deleteRoom(name));
+
+        const controls = document.createElement('div');
+        controls.classList.add('room-controls');
+        controls.appendChild(input);
+        controls.appendChild(changeButton);
+        controls.appendChild(deleteButton);
+
         const item = document.createElement('li');
-        item.appendChild(description);
-        item.appendChild(deleteButton);
-        item.appendChild(input);
-        item.appendChild(changeButton);
+        item.appendChild(roomName);
+        item.appendChild(controls);
         return item;
     };
 

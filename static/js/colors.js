@@ -20,9 +20,12 @@ const makeColorParam = (name, color) => {
         document.documentElement.style.setProperty(name, input.value);
     });
 
+    const description = document.createElement('span');
+    description.textContent = name;
+
     const element = document.createElement('li');
-    element.textContent = name;
     element.appendChild(input);
+    element.appendChild(description);
     return element;
 };
 

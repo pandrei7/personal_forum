@@ -1,0 +1,243 @@
+nav {
+    background: grey;
+    position: fixed;
+    top: 0;
+    width: 100%;
+}
+
+#navbar-content {
+    display: grid;
+    grid-template-columns: 5em auto 3em;
+    grid-template-rows: 3em;
+    margin: 0 auto;
+    max-width: 800px;
+}
+
+#go-home {
+    text-decoration: none;
+    font-size: 1.5rem;
+    margin: auto;
+    padding: auto;
+}
+
+#go-to-room {
+    font-family: 'Roboto Slab', serif;
+    font-size: 1rem;
+    margin: .5em;
+    padding: .25em;
+}
+
+#colors-dropdown-button {
+    font-family: 'Roboto Slab', serif;
+    font-size: 1.5rem;
+    margin: .25em;
+}
+
+.dropdown-content {
+    direction: rtl;
+    display: none;
+    margin-right: .5em;
+    z-index: 1;
+}
+
+.dropdown-show {
+    display: grid;
+}
+
+#colors-dropdown-content button {
+    font-family: 'Roboto Slab', serif;
+    font-size: 1rem;
+    padding: .5em;
+}
+
+main {
+    margin: 4em auto 0;
+    max-width: 666px;
+}
+
+#new-thread-box {
+    border-radius: 5px;
+    padding: .5em .3em;
+    margin-top: 1em;
+}
+
+#new-thread-info {
+    border-radius: 5px;
+    padding: .3em .5em;
+    margin-bottom: .3em;
+}
+
+#new-thread-info:empty {
+    display: none;
+}
+
+#new-thread-box h2 {
+    margin: .3em .2em .2em;
+}
+
+#new-thread-form {
+    display: flex;
+    flex-direction: column;
+}
+
+#new-thread-form textarea {
+    border-radius: 5px;
+    font-family: 'Fira Code', monospace;
+    font-size: 1rem;
+    margin-bottom: .3em;
+    padding: .3rem .2rem;
+    resize: vertical;
+}
+
+#new-thread-controls input {
+    font-family: 'Roboto Slab', serif;
+    font-size: 1rem;
+    padding: .2em .5em;
+}
+
+#sort-box {
+    border-radius: 5px;
+    display: grid;
+    margin: 1em .2em;
+    padding: .5em .3em;
+}
+
+#sort-box h2 {
+    margin: .3em .2em .2em;
+}
+
+#sort-controls {
+    display: grid;
+    grid-template-rows: 1fr 1fr;
+    row-gap: .3em;
+}
+
+#search-box {
+    display: grid;
+    grid-template-columns: auto 2em;
+}
+
+#search-text {
+    font-family: 'Lato', sans-serif;
+    font-size: 1rem;
+    padding: .2em;
+}
+
+#clear-search-button {
+    font-family: 'Roboto Slab', serif;
+    font-weight: bold;
+}
+
+#thread-order {
+    font-family: 'Roboto Slab', serif;
+    font-size: 1rem;
+    padding: .1em .2em;
+    width: 100%;
+}
+
+#message-box {
+    padding: 0 .2em;
+}
+
+.thread {
+    margin-bottom: .5em;
+}
+
+.replies {
+    margin-left: 1em;
+    max-height: 70vh;
+    overflow: auto;
+}
+
+.thread-starter {
+    background: darkgrey;
+    border-radius: 5px;
+}
+
+.thread-info {
+    border-radius: 0 0 5px 5px;
+    font-family: 'Lato', sans-serif;
+    font-size: .9rem;
+    padding: .1em 1em;
+}
+
+.message {
+    border: solid 3px black;
+    border-radius: 5px;
+    display: grid;
+    font-family: 'Lato', sans-serif;
+    grid-template-rows: 1.5em auto;
+    margin-bottom: .2em;
+}
+
+.message-info {
+    display: grid;
+    grid-template-columns: auto auto;
+    padding: .1em .3em;
+}
+
+.message-id {
+    font-family: 'Roboto Slab', serif;
+    font-weight: bold;
+    text-align: left;
+}
+
+.message-timestamp {
+    text-align: right;
+}
+
+.message-content {
+    font-size: 1.1em;
+    padding: .3em;
+}
+
+.replier {
+    border-radius: 5px;
+    border: 3px solid black;
+    padding: .5em .3em;
+}
+
+.replier-info {
+    background: yellow;
+    border-radius: 5px;
+    padding: .3em .5em;
+    margin-bottom: .3em;
+}
+
+.replier-info:empty {
+    display: none;
+}
+
+.replier form {
+    display: flex;
+    flex-direction: column;
+}
+
+.replier textarea {
+    border-radius: 5px;
+    font-family: 'Fira Code', monospace;
+    font-size: 1rem;
+    margin-bottom: .3em;
+    padding: .3rem .2rem;
+    resize: vertical;
+}
+
+.replier-controls input {
+    font-family: 'Roboto Slab', serif;
+    font-size: 1rem;
+    padding: .2em .5em;
+}
+
+#refresh-button {
+    bottom: 2.5em;
+    font-size: 1.2rem;
+    padding: .3em;
+    position: fixed;
+    right: 1em;
+}
+
+@media screen and (min-width: 800px) {
+    #refresh-button {
+        display: none;
+    }
+}

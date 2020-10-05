@@ -9,22 +9,25 @@
   <title>Admin login</title>
 
   <link href="/static/css/base.css" rel="stylesheet">
+  <link href="/static/css/admin_login.css" rel="stylesheet">
 </head>
 
 <body>
-  <h1>Admin login</h1>
+  <main>
+    <h1>Admin login</h1>
 
-  <div id="info-box">{{ info }}</div>
+    <div id="info-box">{{ info }}</div>
 
-  <form action="/admin_login" method="post" id="admin-login-form">
-    <label for="username">Username: </label>
-    <input type="text" name="username" required>
+    <form action="/admin_login" method="post" id="admin-login-form">
+      <label for="username">Username: </label>
+      <input type="text" name="username" required>
 
-    <label for="password">Password: </label>
-    <input type="password" name="password" required>
+      <label for="password">Password: </label>
+      <input type="password" name="password" required>
 
-    <input type="submit" value="Login">
-  </form>
+      <input type="submit" value="Login">
+    </form>
+  </main>
 
   <script src="/static/js/base.js"></script>
 </body>

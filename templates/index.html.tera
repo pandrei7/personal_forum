@@ -9,22 +9,25 @@
   <title>Personal forum</title>
 
   <link href="/static/css/base.css" rel="stylesheet">
+  <link href="/static/css/index.css" rel="stylesheet">
 </head>
 
 <body>
-  <h1>Welcome</h1>
+  <main>
+    <h1>Welcome</h1>
 
-  <div id="info-box">{{ info }}</div>
+    <div id="info-box">{{ info }}</div>
 
-  <form action="/enter_room" method="post" id="room-login-form">
-    <label for="name">Room</label>
-    <input type="text" name="name" required>
+    <form action="/enter_room" method="post" id="room-login-form">
+      <label for="name">Room</label>
+      <input type="text" name="name" required>
 
-    <label for="password">Password</label>
-    <input type="password" name="password" required>
+      <label for="password">Password</label>
+      <input type="password" name="password" required>
 
-    <input type="submit" value="Enter">
-  </form>
+      <input type="submit" value="Enter">
+    </form>
+  </main>
 
   <script src="/static/js/base.js"></script>
 </body>
