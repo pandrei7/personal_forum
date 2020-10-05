@@ -502,6 +502,15 @@ window.addEventListener('load', () => {
     });
 });
 
+// Set up the button for refreshing messages more easily.
+window.addEventListener('load', () => {
+    const refreshButton = document.getElementById('refresh-button');
+    refreshButton.addEventListener('click', async () => {
+        await refreshMessages();
+        scrollToStoredPos();
+    });
+});
+
 // When the window loads, we want to display all messages sent by the server
 // and scroll to the right position.
 window.addEventListener('load', async () => {

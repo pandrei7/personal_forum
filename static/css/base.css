@@ -18,6 +18,11 @@
     main {
         padding: 0 15rem;
     }
+
+    /* Only display the message refresh button on smaller screens. */
+    #refresh-button {
+        display: none;
+    }
 }
 
 @media screen and (max-width: 800px) {
@@ -123,6 +128,15 @@ textarea {
     background: blue;
     font-size: calc(1rem + 0.1vw);
     flex: 1;
+}
+
+#refresh-button {
+    font-size: 1.2rem;
+    background: yellow;
+    padding: 0.3rem;
+    position: fixed;
+    bottom: 1rem;
+    right: 1rem;
 }
 
 .thread {

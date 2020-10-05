@@ -55,6 +55,8 @@
     </div>
 
     <div id="message-box"></div>
+
+    <button id="refresh-button">Update messages</button>
   </main>
 
   <!-- Dependencies -->
