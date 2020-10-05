@@ -35,7 +35,6 @@ pub fn hash_password(password: &str) -> String {
 ///
 /// It's tied to a row in the rooms table.
 pub struct Room {
-    name: String,
     /// The hashed password used to log into the room.
     password: String,
     /// A number used to identify the table which holds the room's messages.
@@ -155,7 +154,6 @@ impl Room {
             "SELECT password, table_id, creation FROM rooms WHERE name = $1;",
             &[&name],
             |row: Row| Room {
-                name: String::from(name),
                 password: row.get(0),
                 table_id: row.get(1),
                 creation: row.get(2),
