@@ -80,11 +80,13 @@ main {
     flex-direction: column;
 }
 
-#new-thread-form textarea {
+#new-thread-content {
     border-radius: 5px;
     font-family: 'Fira Code', monospace;
     font-size: 1rem;
     margin-bottom: .3em;
+    max-height: 10em;
+    min-height: 3em;
     padding: .3rem .2rem;
     resize: vertical;
 }
@@ -218,6 +220,8 @@ main {
     font-family: 'Fira Code', monospace;
     font-size: 1rem;
     margin-bottom: .3em;
+    max-height: 10em;
+    min-height: 3.5em;
     padding: .3rem .2rem;
     resize: vertical;
 }

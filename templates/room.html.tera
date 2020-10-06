@@ -41,7 +41,8 @@
       <p id="new-thread-info"></p>
 
       <form id="new-thread-form">
-        <textarea name="content" placeholder="Type a new thread message here." required></textarea>
+        <textarea name="content" id="new-thread-content" placeholder="Type a new thread message here."
+          required></textarea>
         <div id="new-thread-controls">
           <input type="submit" value="Send">
           <input type="reset" value="Clear">

@@ -218,34 +218,56 @@ class Replier {
          */
         this.threadId = threadId;
         /**
-         * The message returned by the server in response to our last post.
-         * @type {string}
+         * The HTML element which represents the {@link Replier} on the page.
+         *
+         * It should be built lazily.
+         *
+         * @type {HTMLElement?}
          */
-        this.status = '';
+        this.element = null;
         /**
-         * The content of the last message sent.
-         * @type {string}
+         * The element which allows the {@link Replier} to display messages
+         * returned by the server in response to our posts.
+         * @type {HTMLElement?}
          */
-        this.content = '';
+        this.info = null;
     }
 
     /**
-     * Builds an HTML element corresponding to the replier and returns it.
+     * Returns an HTML representation of the {@link Replier}.
      * @return {HTMLElement} The HTML element.
      */
     asElement() {
-        const info = document.createElement('p');
-        info.classList.add('replier-info');
-        info.textContent = this.status;
+        if (this.element == null) {
+            this.element = this.buildElement();
+        }
+        return this.element;
+    }
+
+    /**
+     * Builds an HTML representation of the {@link Replier} and returns it.
+     * @return {HTMLElement} The HTML element.
+     */
+    buildElement() {
+        this.info = document.createElement('p');
+        this.info.classList.add('replier-info');
+
+        const textarea = document.createElement('textarea');
+        textarea.name = 'content';
+        textarea.placeholder = "Write your reply here.\nYou can use CommonMark.";
+        textarea.required = true;
+        makeTextareaResizable(textarea);
+
+        const controls = document.createElement('div');
+        controls.classList.add('replier-controls');
+        controls.innerHTML = `
+            <input type="submit" value="Send">
+            <input type="reset" value="Clear">
+        `;
 
         const form = document.createElement('form');
-        form.innerHTML = `
-            <textarea name="content" placeholder="Write your reply here.\nYou can use CommonMark." required>${this.content}</textarea>
-            <div class="replier-controls">
-                <input type="submit" value="Send">
-                <input type="reset" value="Clear">
-            </div>
-        `;
+        form.appendChild(textarea);
+        form.appendChild(controls);
         form.onsubmit = async (event) => {
             event.preventDefault();
             await this.send(form);
@@ -254,13 +276,14 @@ class Replier {
         };
         form.onreset = (event) => {
             event.preventDefault();
-            this.content = '';
-            form.getElementsByTagName('textarea')[0].value = '';
+            const textarea = form.elements['content'];
+            textarea.value = '';
+            textarea.dispatchEvent(new Event('input')); // Resize the textarea.
         };
 
         const replier = document.createElement('div');
         replier.classList.add('replier');
-        replier.appendChild(info);
+        replier.appendChild(this.info);
         replier.appendChild(form);
         return replier;
     }
@@ -271,11 +294,21 @@ class Replier {
      * @return {Promise<String>} The message returned by the server.
      */
     async send(form) {
-        // Save the content to avoid losing it when refreshing.
-        this.content = form.elements['content'].value;
-        return sendMessageToServer(this.content, this.threadId)
+        const content = form.elements['content'].value;
+        return sendMessageToServer(content, this.threadId)
             .then((response) => response.text())
-            .then((status) => this.status = status);
+            .then((status) => this.printStatus(status));
+    }
+
+    /**
+     * Displays the given message in the {@link Replier}'s information box.
+     *
+     * Should probably be called with a response returned by the server.
+     *
+     * @param {string} status The message which gets displayed.
+     */
+    printStatus(status) {
+        this.info.textContent = status;
     }
 }
 
@@ -414,6 +447,35 @@ const scrollToStoredPos = () => {
     document.documentElement.scrollTop = sessionStorage.getItem(`scroll${roomName}`);
 };
 
+/**
+ * Makes the given textarea element automatically resizable (vertically).
+ *
+ * The resizing mechanism is triggered both when the content of the element
+ * changes, and when this function in called.
+ *
+ * @param {HTMLTextAreaElement} textarea The textarea element.
+ */
+const makeTextareaResizable = (textarea) => {
+    /**
+     * Resizes a textarea element vertically to fit its content better,
+     * while still obeying its `max-height` and `min-height` properties.
+     * @param {HTMLTextAreaElement} elem The textarea element.
+     */
+    const autoResize = (elem) => {
+        const style = window.getComputedStyle(elem);
+        const min = parseInt(style.minHeight, 10) || -Infinity;
+        const max = parseInt(style.maxHeight, 10) || Infinity;
+
+        elem.style.height = 'auto';
+        const wantedHeight = elem.scrollHeight;
+        const newHeight = Math.min(max, Math.max(min, wantedHeight));
+        elem.style.height = `${newHeight}px`;
+    };
+
+    autoResize(textarea);
+    textarea.addEventListener('input', () => autoResize(textarea));
+};
+
 // Set up the form which creates a new thread.
 window.addEventListener('load', () => {
     const info = document.getElementById('new-thread-info');
@@ -517,6 +579,20 @@ window.addEventListener('load', () => {
     refreshButton.addEventListener('click', async () => {
         await refreshMessages();
         scrollToStoredPos();
+    });
+});
+
+// The textarea for creating new threads should resize automatically.
+window.addEventListener('load', () => {
+    const textarea = document.getElementById('new-thread-content');
+    makeTextareaResizable(textarea);
+
+    // Dispatch the event needed for resizing manually when resetting.
+    const form = document.getElementById('new-thread-form');
+    form.addEventListener('reset', (event) => {
+        event.preventDefault();
+        textarea.value = '';
+        textarea.dispatchEvent(new Event('input')); // Resize after clearing.
     });
 });
 
