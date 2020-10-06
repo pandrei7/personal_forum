@@ -75,7 +75,7 @@ class Message {
         // Minutes should have leading zeros.
         const minutes = String(date.getMinutes()).padStart(2, '0');
 
-        return `${day} ${month} ${year} - ${hours}:${minutes}`;
+        return `${day} ${month} ${year} @ ${hours}:${minutes}`;
     }
 }
 
@@ -94,6 +94,7 @@ const addMentions = (element) => {
             const replyId = tag.text.slice(1);
             const link = document.createElement('a');
             link.href = `#message${replyId}`;
+            link.classList.add('mention');
             link.innerHTML = tag.text;
             return link;
         },
@@ -160,7 +161,7 @@ class Thread {
                 <div class="thread-starter">
                     ${this.firstMessage.asElement().outerHTML}
                     <div class="thread-info">
-                        <p>${this.replies.length} replies</p>
+                        <p>${this.repliesDescription()}</p>
                     </div>
                 </div>
             `;
@@ -194,6 +195,19 @@ class Thread {
      */
     openId() {
         return `open${this.firstMessage.id}room${roomName}`;
+    }
+
+    /**
+     * Returns a human-readable description of the number of replies.
+     * @return {string} The description.
+     */
+    repliesDescription() {
+        const count = this.replies.length;
+        switch (count) {
+            case 0: return 'No replies';
+            case 1: return '1 reply';
+            default: return `${count} replies`;
+        }
     }
 
     /**
@@ -414,6 +428,7 @@ const displayThreads = (threads) => {
 
         let matches = 0;
         if (searchText) {
+            // TODO: Maybe search for exact match.
             const marker = new Mark(element);
             marker.mark(searchText, {done: (matchCount) => matches = matchCount});
         }
@@ -566,10 +581,38 @@ window.addEventListener('load', () => {
 
     // Buttons for preset themes.
     document.getElementById('light-theme-button').onclick = () => changeColors({
-        '--background': '#ffffff',
+        '--background1': '#eceff1',
+        '--background2': '#90a4ae',
+        '--primary1': '#cfd8dc',
+        '--primary2': '#b0bec5',
+        '--secondary1': '#960018',
+        '--secondary2': '#7c0a02',
+        '--extra1': '#fafafa',
+        '--extra2': '#c21807',
+        '--text-color1': '#000000',
+        '--text-color2': '#660000',
+        '--text-color3': '#ffffff',
+        '--text-color4': '#fafafa',
+        '--text-faded1': '#424242',
+        '--mark-background': '#fafafa',
+        '--mark-text-color': '#660000',
     });
     document.getElementById('dark-theme-button').onclick = () => changeColors({
-        '--background': '#bebebe',
+        '--background1': '#121212',
+        '--background2': '#1f282d',
+        '--primary1': '#1f282d',
+        '--primary2': '#263a38',
+        '--secondary1': '#e64a19',
+        '--secondary2': '#d84315',
+        '--extra1': '#090c0d',
+        '--extra2': '#d84315',
+        '--text-color1': '#eceff1',
+        '--text-color2': '#ff5722',
+        '--text-color3': '#000000',
+        '--text-color4': '#eceff1',
+        '--text-faded1': '#90a4ae',
+        '--mark-background': '#1f282d',
+        '--mark-text-color': '#ff5722',
     });
 });
 

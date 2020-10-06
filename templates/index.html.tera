@@ -14,7 +14,7 @@
 
 <body>
   <main>
-    <h1>Welcome</h1>
+    <h1 id="welcome-header">Welcome</h1>
 
     <div id="info-box">{{ info }}</div>
 

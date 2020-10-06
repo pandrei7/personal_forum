@@ -4,9 +4,15 @@ main {
     padding: 0 .25em;
 }
 
+#welcome-header {
+    margin-bottom: 1em;
+}
+
 #info-box {
+    background: var(--secondary2);
     border-radius: 20px;
-    margin: .1em auto;
+    color: var(--text-color4);
+    margin: .1em auto .5em;
     padding: 1em;
 }
 
@@ -15,6 +21,8 @@ main {
 }
 
 #room-login-form {
+    background: var(--primary1);
+    border: 5px solid var(--primary2);
     border-radius: 20px;
     display: flex;
     flex-direction: column;
@@ -22,13 +30,29 @@ main {
 }
 
 #room-login-form input {
+    background: var(--extra1);
+    border: 2px solid var(--primary2);
+    border-radius: 5px;
+    color: var(--text-color1);
     font-family: 'Roboto Slab', serif;
     font-size: 1rem;
     margin-bottom: .3em;
     padding: .1em .2em;
 }
 
+#room-login-form input:focus {
+    outline-width: 0;
+}
+
 #room-login-form input[type=submit] {
+    background: var(--primary2);
+    border: 2px solid var(--secondary2);
+    border-radius: 5px;
+    outline: none;
     margin: .5em auto 0;
     padding: .2em;
+}
+
+#room-login-form input[type=submit]:hover {
+    background: var(--primary1);
 }

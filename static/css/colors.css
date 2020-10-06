@@ -9,6 +9,7 @@ main h1:first-child {
 
 #colors-pane {
     border-radius: 5px;
+    margin-bottom: 1em;
 }
 
 #colors-list {
@@ -18,6 +19,15 @@ main h1:first-child {
 
 #colors-list li {
     display: grid;
-    grid-template-columns: 4em auto;
+    grid-template-columns: 4.5em auto;
     padding: .5em .7em;
+}
+
+#preview-pane {
+    margin-bottom: 3em;
+}
+
+#preview-pane > h2 {
+    margin-bottom: .5em;
+    padding-left: .5em;
 }

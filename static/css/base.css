@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@500&family=Lato&family=Roboto+Slab:wght@500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;700&family=Lato:ital,wght@0,400;0,700;1,400;1,700&family=Roboto+Slab:wght@400;500;700;900&display=swap');
 
 /* "Reset" CSS */
 * {
@@ -10,16 +10,43 @@
   box-sizing: border-box;
 }
 
-/* Default style */
-:root {
-    --background: #ffffff;
+/* Indent lists. */
+ol, ul {
+    margin-left: 1em;
 }
 
+/* Color variables */
+:root {
+    --background1:#121212;
+    --background2:#1f282d;
+    --primary1:#1f282d;
+    --primary2:#263a38;
+    --secondary1:#e64a19;
+    --secondary2:#d84315;
+    --extra1:#090c0d;
+    --extra2:#d84315;
+    --text-color1:#eceff1;
+    --text-color2:#ff5722;
+    --text-color3:#000000;
+    --text-color4:#eceff1;
+    --text-faded1:#90a4ae;
+    --mark-background:#1f282d;
+    --mark-text-color:#ff5722;
+}
+
+/* Default style */
 html {
     font-size: 100%;
 }
 
 body {
-    background: var(--background);
+    background: var(--background1);
+    color: var(--text-color1);
     font-family: 'Roboto Slab', serif;
+}
+
+mark {
+    background: var(--mark-background);
+    color: var(--mark-text-color);
+    font-weight: bold;
 }

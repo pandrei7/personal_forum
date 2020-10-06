@@ -20,7 +20,7 @@
       <datalist id="rooms-seen"></datalist>
 
       <div id="colors-dropdown">
-        <button onclick="toggleColorsDropdown();" id="colors-dropdown-button">🖌️</button>
+        <button onclick="toggleColorsDropdown();" id="colors-dropdown-button">🎨</button>
         <div id="colors-dropdown-content" class="dropdown-content">
           <button id="light-theme-button">Light</button>
           <button id="dark-theme-button">Dark</button>
@@ -33,7 +33,7 @@
   </nav>
 
   <main>
-    <h1>Welcome to room '{{ name }}'.</h1>
+    <h1 id="welcome-header">Welcome to room '{{ name }}'.</h1>
 
     <div id="new-thread-box">
       <h2>Start a thread</h2>
@@ -68,8 +68,19 @@
 
     <div id="message-box"></div>
 
-    <button id="refresh-button">Update messages</button>
+    <button id="refresh-button">
+      <img src="/static/img/refresh.png" alt="Refresh messages button">
+    </button>
   </main>
+
+  <footer>
+    <p>
+      Icons made by
+      <a href="https://www.flaticon.com/authors/freepik" title="Freepik">Freepik</a>
+      from
+      <a href="https://www.flaticon.com/" title="Flaticon"> www.flaticon.com</a>.
+    </p>
+  </footer>
 
   <!-- Dependencies -->
   <script src="https://cdn.jsdelivr.net/npm/mark.js@8.11.1/dist/mark.min.js"></script>

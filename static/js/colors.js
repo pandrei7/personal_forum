@@ -12,7 +12,7 @@
 const makeColorParam = (name, color) => {
     const input = document.createElement('input');
     input.type = 'color'
-    input.value = color;
+    input.value = color.trim();
     input.addEventListener('input', async () => {
         const colors = await loadStoredColors();
         colors[name] = input.value;

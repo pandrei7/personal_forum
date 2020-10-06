@@ -14,7 +14,7 @@
 
 <body>
   <main>
-    <h1>Admin login</h1>
+    <h1 id="main-header">Admin login</h1>
 
     <div id="info-box">{{ info }}</div>
 

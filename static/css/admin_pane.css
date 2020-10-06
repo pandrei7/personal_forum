@@ -11,19 +11,46 @@ h1, h2, h3 {
 }
 
 section {
-    border: 3px solid black;
+    background: var(--primary1);
+    border: 5px solid var(--primary2);
     border-radius: 5px;
     margin: .5rem auto;
     padding: .5em;
 }
 
-#create-room-box {
+section h2:first-child {
+    margin-bottom: .5em;
+}
+
+input[type=text] {
+    background: var(--extra1);
+    border: 2px solid var(--primary2);
     border-radius: 5px;
+    color: var(--text-color1);
+}
+
+button {
+    background: var(--primary2);
+    border: 2px solid var(--secondary2);
+    border-radius: 5px;
+    color: var(--text-color1);
+    outline: none;
+}
+
+button:hover {
+    background: var(--primary1);
+}
+
+#create-room-box {
+    border-left: 5px solid var(--secondary2);
+    margin-bottom: 1em;
     padding: .5em .4em;
 }
 
 #create-room-status {
+    background: var(--secondary2);
     border-radius: 5px;
+    color: var(--text-color4);
     padding: .5em .7em;
     margin: .5em auto;
 }
@@ -33,9 +60,11 @@ section {
 }
 
 #create-room-form {
+    align-items: center;
     display: grid;
     grid-template-columns: 5em 1fr;
-    grid-template-rows: 1.7em 1.7em 1.7em;
+    grid-template-rows: 2em 2em 2em;
+    justify-items: start;
     margin-top: .5em;
 }
 
@@ -46,20 +75,30 @@ section {
 #create-room-form input[type=text] {
     font-family: 'Roboto Slab', serif;
     font-size: 1rem;
-    height: 1.5em;
-    padding: .2em;
-    margin: auto .1em;
+    height: 2em;
+    padding: .7em .4em;
+    width: 100%;
 }
 
 #create-room-form input[type=submit] {
+    background: var(--primary2);
+    border: 2px solid var(--secondary2);
+    border-radius: 5px;
+    color: var(--text-color1);
     font-family: 'Lato', sans-serif;
     font-size: 1rem;
     grid-column: 2;
+    height: 2em;
+    outline: none;
     width: 5em;
 }
 
+#create-room-form input[type=submit]:hover {
+    background: var(--primary1);
+}
+
 #active-rooms-box {
-    border-radius: 5px;
+    border-left: 5px solid var(--secondary2);
     padding: .5em .4em;
 }
 
@@ -69,7 +108,6 @@ section {
 }
 
 #active-rooms-list li {
-    border-radius: 5px;
     display: flex;
     flex-direction: column;
     font-size: 1.2rem;
@@ -92,14 +130,16 @@ section {
 .room-controls {
     display: grid;
     grid-template-columns: 1fr 3em;
-    grid-template-rows: 1.5em;
+    grid-template-rows: 2em 2em;
+    justify-items: start;
     row-gap: .5em;
 }
 
 #active-rooms-list input[type=text] {
     font-family: 'Roboto Slab', serif;
     font-size: 1rem;
-    padding: .2em;
+    padding: .7em .4em;
+    width: 100%;
 }
 
 #active-rooms-list button {
@@ -108,6 +148,16 @@ section {
 }
 
 .delete-button {
+    border: none;
+    background: #b71c1c;
+    border-radius: 5px;
+    color: #fafafa;
+    font-weight: bold;
+    outline: none;
     padding: .5em;
     width: 8em;
+}
+
+.delete-button:hover {
+    background: #d50000;
 }
