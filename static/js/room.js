@@ -428,9 +428,11 @@ const displayThreads = (threads) => {
 
         let matches = 0;
         if (searchText) {
-            // TODO: Maybe search for exact match.
             const marker = new Mark(element);
-            marker.mark(searchText, {done: (matchCount) => matches = matchCount});
+            marker.mark(searchText, {
+                separateWordSearch: false,
+                done: (matchCount) => matches = matchCount
+            });
         }
 
         orderedElements.push({
