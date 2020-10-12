@@ -142,6 +142,10 @@ class Thread {
         const replies = (() => {
             const div = document.createElement('div');
             div.classList.add('replies');
+            div.scrollTop = localStorage.getItem(this.scrollId()) ?? 0;
+            div.addEventListener('scroll', () => {
+                localStorage.setItem(this.scrollId(), div.scrollTop);
+            });
 
             // Replies should be displayed in chronological order.
             this.replies.sort((a, b) => a.timestamp - b.timestamp);
@@ -190,11 +194,34 @@ class Thread {
     }
 
     /**
+     * Scrolls the thread's replies box to its stored position.
+     *
+     * This should probably be called after the element was rendered on
+     * the page, otherwise setting its scroll position might not have any
+     * effect.
+     *
+     * @param {HTMLElement} element The element corresponding to this thread.
+     */
+    restoreScroll(element) {
+        const scroll = localStorage.getItem(this.scrollId());
+        element.getElementsByClassName('replies')[0].scrollTo(0, scroll);
+    }
+
+    /**
      * Returns the key name used by storage to know if this thread is open or not.
      * @return {string} The thread's "open id".
      */
     openId() {
         return `open${this.firstMessage.id}room${roomName}`;
+    }
+
+    /**
+     * Returns the key name used by storage to remember the last scroll
+     * position of this thread's replies box.
+     * @return {string} The thread's "scroll id".
+     */
+    scrollId() {
+        return `scroll${this.firstMessage.id}room${roomName}`;
     }
 
     /**
@@ -421,7 +448,7 @@ const displayThreads = (threads) => {
     const threadOrder = document.getElementById('thread-order').value;
 
     // Sort the threads.
-    const orderedElements = [];
+    const orderedThreads = [];
     for (const [_, thread] of threads.entries()) {
         const element = thread.asElement();
         const timestamp = thread.timestamp();
@@ -435,13 +462,14 @@ const displayThreads = (threads) => {
             });
         }
 
-        orderedElements.push({
+        orderedThreads.push({
+            thread: thread,
             element: element,
             timestamp: timestamp,
             matches: matches,
         });
     }
-    orderedElements.sort((a, b) => {
+    orderedThreads.sort((a, b) => {
         if (a.matches !== b.matches) {
             return b.matches - a.matches;
         }
@@ -454,8 +482,9 @@ const displayThreads = (threads) => {
     // Place the sorted elements.
     const messageBox = document.getElementById('message-box');
     messageBox.innerHTML = ''; // Remove older messages;
-    for (const orderedElement of orderedElements) {
-        messageBox.appendChild(orderedElement.element);
+    for (const orderedThread of orderedThreads) {
+        messageBox.appendChild(orderedThread.element);
+        orderedThread.thread.restoreScroll(orderedThread.element);
     }
 };
 
