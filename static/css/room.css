@@ -342,6 +342,7 @@ main {
 .message-content img {
     max-width: 100%;
     max-height: 35vh;
+    vertical-align: top;
 }
 
 .message-content ul {
