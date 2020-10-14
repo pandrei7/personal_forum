@@ -525,6 +525,11 @@ const makeTextareaResizable = (textarea) => {
     textarea.addEventListener('input', () => autoResize(textarea));
 };
 
+/** Toggles the quick guide overlay, by displaying/hiding it as necessary. */
+const toggleGuide = () => {
+    document.getElementById('guide').classList.toggle('show-guide');
+};
+
 // Set up the form which creates a new thread.
 window.addEventListener('load', () => {
     const info = document.getElementById('new-thread-info');
@@ -543,7 +548,7 @@ window.addEventListener('load', () => {
                 await refreshMessages();
                 scrollToStoredPos();
             });
-    }
+    };
 });
 
 // Set up the components of the bar used for sorting threads.
@@ -648,6 +653,19 @@ window.addEventListener('load', () => {
         '--mark-background': '#1f282d',
         '--mark-text-color': '#ff5722',
     });
+});
+
+// Set up the quick guide overlay.
+window.addEventListener('load', () => {
+    const showGuideButton = document.getElementById('show-guide-button');
+    showGuideButton.addEventListener('click', toggleGuide);
+
+    const overlay = document.getElementById('guide');
+    overlay.addEventListener('click', toggleGuide);
+
+    const content = document.getElementById('guide-content');
+    // We want to be able to click on the content without hiding the guide.
+    content.addEventListener('click', (event) => event.stopPropagation());
 });
 
 // Set up the button for refreshing messages more easily.

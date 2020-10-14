@@ -114,7 +114,66 @@ nav {
 }
 
 #welcome-header {
+    margin-top: .5em;
+}
+
+#show-guide-button {
+    background: none;
+    border: 2px solid var(--text-faded1);
+    border-radius: 50%;
+    color: var(--text-faded1);
+    cursor: pointer;
+    font-weight: bold;
+    height: 1.5em;
+    outline: none;
+    vertical-align: middle;
+    width: 1.5em;
+}
+
+#show-guide-button:hover {
+    border-color: var(--text-color1);
+    color: var(--text-color1);
+}
+
+#guide {
+    background: rgba(0, 0, 0, .9);
+    bottom: 0;
+    cursor: pointer;
+    display: none;
+    height: 100%;
+    left: 0;
+    position: fixed;
+    right: 0;
+    top: 0;
+    width: 100%;
+    z-index: 1;
+}
+
+#guide.show-guide {
+    display: block;
+}
+
+#guide-content {
+    background: var(--primary1);
+    border: 3px solid var(--primary2);
+    border-radius: 10px;
+    cursor: default;
+    max-height: min(80%, 700px);
+    width: min(96%, 650px);
+    margin: auto auto;
+    overflow: auto;
+    padding: 1em .5em 1.1em;
+    position: relative;
+    top: 10%;
+}
+
+#guide-content > p {
     margin-top: 1em;
+}
+
+#guide-content a {
+    color: var(--text-color2);
+    font-weight: bold;
 }
 
 main {
@@ -129,7 +188,7 @@ main {
     border: 5px solid var(--primary2);
     border-radius: 5px;
     padding: .5em .3em;
-    margin: 2em 0;
+    margin: 2em 0 3em;
 }
 
 #new-thread-info {

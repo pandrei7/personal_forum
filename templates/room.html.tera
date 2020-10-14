@@ -33,7 +33,38 @@
   </nav>
 
   <main>
-    <h1 id="welcome-header">Welcome to room '{{ name }}'.</h1>
+    <h1 id="welcome-header">
+      Welcome to room '{{ name }}'.
+      <button id="show-guide-button">?</button>
+    </h1>
+
+    <div id="guide">
+      <div id="guide-content">
+        <h2># Quick guide</h2>
+        <p>
+          On this page you can browse the room's threads and start new ones.
+        </p>
+        <p>
+          Click on a thread to read all replies and post your own.
+          You should be able to use
+          <a href="https://commonmark.org/help/">CommonMark</a>
+          to write your messages.
+        </p>
+        <p>
+          <strong>Updates are requested manually</strong>, by refreshing
+          the page (on mobile, you should see an easy-refresh button).
+        </p>
+        <p>
+          You can sort threads by searching for a given phrase.
+          The most relevant results will be shown at the top.
+          You can also order threads by their creation time.
+        </p>
+        <p>
+          The 'color palette' button in the navigation bar allows you to choose
+          a color theme which suits your needs, or even create your own.
+        </p>
+      </div>
+    </div>
 
     <div id="new-thread-box">
       <h2>Start a thread</h2>
