@@ -486,6 +486,9 @@ const displayThreads = (threads) => {
         messageBox.appendChild(orderedThread.element);
         orderedThread.thread.restoreScroll(orderedThread.element);
     }
+    if (!orderedThreads.length) {
+        messageBox.innerHTML = '<p>There are no threads in this room.</p>';
+    }
 };
 
 /** Scrolls the document to the last position stored in the browser. */

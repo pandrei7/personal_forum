@@ -120,6 +120,7 @@ nav {
 main {
     margin: 4em auto 0;
     max-width: 666px;
+    min-height: 90vh;
     padding: .2em;
 }
 
@@ -474,7 +475,7 @@ main {
 
 footer {
     background: var(--background2);
-    padding: .6em .25em 1em;
+    padding: 1em .25em 1.2em;
 }
 
 footer p {
