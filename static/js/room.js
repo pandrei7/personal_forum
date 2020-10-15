@@ -702,10 +702,11 @@ window.addEventListener('load', async () => {
     // Request updates from the server and display all messages.
     await refreshMessages();
     scrollToStoredPos();
+
+    // We want the scroll position to be "persistent" between refreshes,
+    // so we store it when it changes.
+    window.addEventListener('scroll', () => {
+        sessionStorage.setItem(`scroll${roomName}`, document.documentElement.scrollTop);
+    });
 });
 
-// We want the scroll position to be "persistent" between refreshes,
-// so we store it when it changes.
-window.addEventListener('scroll', () => {
-    sessionStorage.setItem(`scroll${roomName}`, document.documentElement.scrollTop);
-});
