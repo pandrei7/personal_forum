@@ -16,6 +16,8 @@
   <main>
     <h1 id="welcome-header">Welcome</h1>
 
+    <div id="welcome-message">{{ welcome_message | safe }}</div>
+
     <div id="info-box">{{ info }}</div>
 
     <form action="/enter_room" method="post" id="room-login-form">

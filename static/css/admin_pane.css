@@ -41,6 +41,49 @@ button:hover {
     background: var(--primary1);
 }
 
+#welcome-message-form {
+    display: grid;
+    grid-template-rows: 1fr 2em;
+    justify-items: start;
+}
+
+#welcome-message-form > input {
+    background: var(--primary2);
+    border: 2px solid var(--secondary2);
+    border-radius: 5px;
+    color: var(--text-color1);
+    font-family: 'Roboto Slab', serif;
+    font-size: 1rem;
+    outline: none;
+    padding: .2em .5em;
+}
+
+#welcome-message-form > input:hover {
+    background: var(--primary1);
+}
+
+#welcome-message-content {
+    background: var(--extra1);
+    border: 2px solid var(--primary2);
+    border-radius: 5px;
+    color: var(--text-color1);
+    font-family: 'Fira Code', monospace;
+    font-size: 1rem;
+    margin-bottom: .3em;
+    min-height: 5em;
+    padding: .3rem .2rem;
+    resize: vertical;
+    width: 100%;
+}
+
+#welcome-message-content:focus {
+    outline-width: 0;
+}
+
+#welcome-message-content::placeholder {
+    color: var(--text-faded1);
+}
+
 #create-room-box {
     border-left: 5px solid var(--secondary2);
     margin-bottom: 1em;

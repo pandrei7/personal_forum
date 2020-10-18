@@ -55,6 +55,10 @@ impl DbInitFairing {
                 FOREIGN KEY (id) REFERENCES sessions(id) ON DELETE CASCADE,
                 FOREIGN KEY (name) REFERENCES rooms(name) ON DELETE CASCADE
             );
+            CREATE TABLE IF NOT EXISTS template_variables (
+                name  TEXT PRIMARY KEY,
+                value TEXT
+            );
 
             DELETE FROM sessions;
             DELETE FROM room_attempts;

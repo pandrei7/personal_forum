@@ -8,6 +8,16 @@ main {
     margin-bottom: 1em;
 }
 
+#welcome-message {
+    border-radius: 20px;
+    margin: .1em auto .5em;
+    padding: 1em;
+}
+
+#welcome-message a {
+    color: var(--text-color2);
+}
+
 #info-box {
     background: var(--secondary2);
     border-radius: 20px;

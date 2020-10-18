@@ -6,6 +6,7 @@ mod db;
 mod messages;
 mod rooms;
 mod sessions;
+mod template_variables;
 mod users;
 
 use std::collections::HashMap;
@@ -25,11 +26,13 @@ use db::{DbConn, DbInitFairing};
 use messages::{Message, MessageJson, Updates};
 use rooms::{Room, RoomLogin};
 use sessions::{Session, SessionFairing};
+use template_variables::WelcomeMessage;
 
 #[get("/")]
-fn index(flash: Option<FlashMessage>) -> Template {
+fn index(flash: Option<FlashMessage>, welcome_message: WelcomeMessage) -> Template {
     // Populate the template.
     let mut context = HashMap::new();
+    context.insert("welcome_message", welcome_message.0);
     context.insert(
         "info",
         flash
@@ -96,6 +99,19 @@ fn session_count(_admin: Admin, conn: DbConn) -> Result<String, Status> {
     Session::count_sessions(&conn)
         .map(|num| num.to_string())
         .map_err(|_| Status::InternalServerError)
+}
+
+#[get("/welcome_message")]
+fn welcome_message(_admin: Admin, message: WelcomeMessage) -> String {
+    message.0
+}
+
+#[post("/change_welcome_message", format = "plain", data = "<message>")]
+fn change_welcome_message(_admin: Admin, message: WelcomeMessage, conn: DbConn) -> String {
+    match message.save_to_db(&conn) {
+        Ok(_) => "Saved your message succesfully.".into(),
+        _ => "Could not save your welcome message.".into(),
+    }
 }
 
 #[get("/active_rooms")]
@@ -249,6 +265,7 @@ fn rocket() -> rocket::Rocket {
                 admin_pane_for_admin,
                 admin_pane_for_non_admin,
                 change_room_password,
+                change_welcome_message,
                 colors,
                 create_room,
                 delete_room,
@@ -259,6 +276,7 @@ fn rocket() -> rocket::Rocket {
                 room,
                 session_count,
                 static_file,
+                welcome_message,
             ],
         )
         .attach(Template::fairing())

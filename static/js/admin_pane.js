@@ -148,6 +148,39 @@ const urlencodePairs = (pairsObject) => {
         .join('&');
 };
 
+// Set up the 'welcome message' functionality.
+window.addEventListener('load', () => {
+    const content = document.getElementById('welcome-message-content');
+
+    /** Fetches the welcome message from the server and places it in the textarea. */
+    const populateContent = () => {
+        fetch('/welcome_message')
+            .then((response) => response.text())
+            .then((message) => content.value = message);
+    };
+
+    // We should populate the textarea when loading the page.
+    populateContent();
+
+    // Set up the form which changes the welcome message.
+    const form = document.getElementById('welcome-message-form');
+    form.addEventListener('submit', (event) => {
+        event.preventDefault();
+
+        fetch('/change_welcome_message', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'text/plain',
+            },
+            body: content.value,
+        })
+            .then((response) => response.text())
+            .then((status) => alert(status))
+            // We should reload the message, since the server might modify it.
+            .then(() => populateContent());
+    });
+});
+
 // Set up the form which allows admins to create new rooms.
 window.addEventListener('load', () => {
     const info = document.getElementById('create-room-status');
