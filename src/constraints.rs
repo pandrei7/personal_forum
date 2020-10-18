@@ -84,6 +84,7 @@ impl Display for RoomName {
     }
 }
 
+// TODO(pandrei7): Stop using `Deref`.
 impl Deref for RoomName {
     type Target = str;
 
