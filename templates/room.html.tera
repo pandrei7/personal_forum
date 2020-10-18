@@ -49,6 +49,8 @@
           You should be able to use
           <a href="https://commonmark.org/help/">CommonMark</a>
           to write your messages.
+          You can mention posts by prefixing their number with the '@' sign,
+          like so: <code>@12</code>.
         </p>
         <p>
           <strong>Updates are requested manually</strong>, by refreshing

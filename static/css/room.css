@@ -159,12 +159,12 @@ nav {
     border-radius: 10px;
     cursor: default;
     max-height: min(80%, 700px);
-    width: min(96%, 650px);
     margin: auto auto;
     overflow: auto;
     padding: 1em .5em 1.1em;
     position: relative;
     top: 10%;
+    width: min(96%, 650px);
 }
 
 #guide-content > p {
@@ -174,6 +174,13 @@ nav {
 #guide-content a {
     color: var(--text-color2);
     font-weight: bold;
+}
+
+#guide-content code {
+    background: var(--extra1);
+    border-radius: 5px;
+    font-family: 'Fira Code', monospace;
+    padding: 0 .25em;
 }
 
 main {
