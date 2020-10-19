@@ -31,6 +31,13 @@
     </form>
   </main>
 
+  <footer>
+    <p>
+      This website uses cookies to synchronize your messages.
+      By continuing to use the site you agree to this.
+    </p>
+  </footer>
+
   <script src="/static/js/base.js"></script>
 </body>
 

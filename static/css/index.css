@@ -1,6 +1,7 @@
 main {
     margin: 4em auto 0;
     max-width: 500px;
+    min-height: 80vh;
     padding: 0 .25em;
 }
 
@@ -67,4 +68,19 @@ main {
 
 #room-login-form input[type=submit]:hover {
     background: var(--primary1);
+}
+
+footer {
+    background: var(--background2);
+    min-height: 20vh;
+    padding: 1em .25em 1.2em;
+}
+
+footer p {
+    max-width: 960px;
+    margin: 0 auto;
+}
+
+footer a {
+    color: var(--text-color2);
 }
