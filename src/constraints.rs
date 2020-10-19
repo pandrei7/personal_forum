@@ -10,7 +10,6 @@
 
 use std::fmt::{self, Display, Formatter};
 use std::io::Read;
-use std::ops::Deref;
 
 use rocket::data::{Data, FromDataSimple, Outcome};
 use rocket::http::{RawStr, Status};
@@ -24,7 +23,7 @@ pub const MAX_ROOM_NAME_LEN: usize = 128;
 
 /// Represents a valid name for a room.
 #[derive(Serialize)]
-pub struct RoomName(String);
+pub struct RoomName(pub String);
 
 impl RoomName {
     /// Checks if a given name is valid, and builds the corresponding `RoomName`.
@@ -81,14 +80,5 @@ impl FromDataSimple for RoomName {
 impl Display for RoomName {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         write!(f, "{}", self.0)
-    }
-}
-
-// TODO(pandrei7): Stop using `Deref`.
-impl Deref for RoomName {
-    type Target = str;
-
-    fn deref(&self) -> &str {
-        &self.0
     }
 }

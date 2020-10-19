@@ -142,6 +142,7 @@ fn create_room(_admin: Admin, room: Form<RoomLogin>, conn: DbConn) -> String {
 
 #[delete("/delete_room", data = "<name>")]
 fn delete_room(_admin: Admin, name: RoomName, conn: DbConn) -> String {
+    let name = name.0;
     match Room::delete_room(&conn, &name) {
         Ok(_) => format!("Room {} deleted successfully.", &name),
         Err(reason) => reason,
@@ -206,6 +207,7 @@ fn get_message_updates(
     conn: DbConn,
 ) -> Result<Json<Updates>, Status> {
     let room = room.ok_or(Status::Unauthorized)?;
+    let name = name.0;
 
     let last_update = session.get_room_update(&conn, &name).unwrap_or(0);
     let now = Message::current_timestamp();
