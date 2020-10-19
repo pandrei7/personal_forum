@@ -33,6 +33,7 @@ main {
     background: var(--extra1);
     border: 2px solid var(--primary2);
     border-radius: 5px;
+    box-shadow: 0 0 3px inset rgba(0, 0, 0, 0.9);
     color: var(--text-color1);
     font-family: 'Roboto Slab', serif;
     font-size: 1rem;
@@ -48,6 +49,7 @@ main {
     background: var(--primary2);
     border: 2px solid var(--secondary2);
     border-radius: 5px;
+    box-shadow: 0 0 2px rgba(0, 0, 0, 0.9);
     outline: none;
     margin: .5em auto 0;
     padding: .2em;
