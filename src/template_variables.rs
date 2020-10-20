@@ -65,6 +65,10 @@ impl FromDataSimple for WelcomeMessage {
     /// Parses and cleans a welcome message from a body of data.
     ///
     /// The message should be sent as a plaintext string.
+    ///
+    /// It's important that this message is cleaned, otherwise an attacker
+    /// who manages to obtain admin rights might insert malicious code which
+    /// all users would receive.
     fn from_data(_req: &Request, data: Data) -> data::Outcome<Self, Self::Error> {
         let mut message = String::new();
         if let Err(err) = data
