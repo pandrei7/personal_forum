@@ -330,6 +330,10 @@ main {
     width: 100%;
 }
 
+#message-box {
+    margin-bottom: 3em;
+}
+
 .thread {
     margin-bottom: .5em;
 }

@@ -82,6 +82,9 @@ const displayActiveRooms = (rooms) => {
     for (const name of rooms) {
         activeRoomsList.appendChild(createListItem(name));
     }
+    if (!rooms.length) {
+        activeRoomsList.innerHTML = '<p>There are no active rooms.</p>';
+    }
 };
 
 /**
