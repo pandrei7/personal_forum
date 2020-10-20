@@ -224,6 +224,12 @@ class Thread {
         return `scroll${this.firstMessage.id}room${roomName}`;
     }
 
+    /** Removes all data stored in the browser by this thread. */
+    cleanStored() {
+        localStorage.removeItem(this.openId());
+        sessionStorage.removeItem(this.scrollId());
+    }
+
     /**
      * Returns a human-readable description of the number of replies.
      * @return {string} The description.
@@ -405,6 +411,10 @@ const applyDelta = async (delta, threads) => {
 
     if (delta.clean_stored) {
         messages = [];
+
+        for (const [_, thread] of threads) {
+            thread.cleanStored();
+        }
         threads.clear();
     }
 
