@@ -1,6 +1,6 @@
 //! Module for working with administrator accounts.
 //!
-//! This module provides data structures and request guards for
+//! This module provides data types and request guards for
 //! authenticating and interacting with administrators.
 //!
 //! Administrator credentials are held in the `admins` table, which
