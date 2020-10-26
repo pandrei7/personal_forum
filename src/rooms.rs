@@ -39,7 +39,6 @@ pub struct Room {
     password: String,
     /// A number used to identify the table which holds the room's messages.
     table_id: i32,
-    // TODO(pandrei7): Maybe refactor this out.
     creation: i64,
 }
 
@@ -180,7 +179,7 @@ impl<'a, 'r> FromRequest<'a, 'r> for Room {
     ///
     /// ```rust ignore
     /// #[get("/room/<name>")]
-    /// fn test_room_access(name: String, room: Option<Room>) -> String {
+    /// fn test_room_access(name: RoomName, room: Option<Room>) -> &'static str {
     ///     if room.is_some() {
     ///         "You have access to this room."
     ///     } else {
@@ -188,7 +187,6 @@ impl<'a, 'r> FromRequest<'a, 'r> for Room {
     ///     }
     /// }
     /// ```
-    // TODO(pandrei7): Refactor this.
     fn from_request(req: &'a Request<'r>) -> request::Outcome<Self, Self::Error> {
         // Try to extract the name of the room.
         let name = {
