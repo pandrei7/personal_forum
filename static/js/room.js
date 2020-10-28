@@ -388,17 +388,32 @@ const refreshMessages = async () => {
 
 /**
  * Requests the next "delta" update from the server and returns its response.
+ *
+ * Only one request will be "active" at a time, meaning that calls might have
+ * to wait until older calls get finished.
+ *
  * @return {Promise<object>} The "delta" object returned by the server.
  * @throws Will throw an error if the response was not successful.
  */
 const getDelta = async () => {
+    // Wait for other calls of this function to finish.
+    while (localStorage.getItem(`updating${roomName}`) === 'true') {
+        await new Promise((resolve) => {
+            setTimeout(() => resolve(), 500);
+        });
+    }
+
+    // Block other calls from issuing the request.
+    localStorage.setItem(`updating${roomName}`, 'true');
+
     return fetch(`/room/${roomName}/updates`)
         .then((response) => {
+            localStorage.setItem(`updating${roomName}`, 'false');
             if (!response.ok) {
                 throw new Error('Message update response was not OK.');
             }
             return response.json();
-        })
+        });
 };
 
 /**
@@ -701,9 +716,20 @@ window.addEventListener('load', () => {
     });
 });
 
-// When the window loads, we want to display all messages sent by the server
-// and scroll to the right position.
+// When the window loads, we want to fetch new messages from the server,
+// display them, then scroll to the user's previous position. We should
+// also warn users if they might have had issues with the server updates.
 window.addEventListener('load', async () => {
+    // Inform the user if the page was refreshed before updates were fetched.
+    if (localStorage.getItem(`updating${roomName}`) === 'true') {
+        localStorage.setItem(`updating${roomName}`, 'false');
+        alert(
+            'It seems like this page was refreshed before updates were fetched fully. '
+            + 'Because of this, you might be missing some messages. '
+            + 'This can be fixed by clearing your cookies (which will log you out).'
+        );
+    }
+
     // Reload the stored messages into memory.
     threads = new Map();
     const storedMessages = JSON.parse(localStorage.getItem(`msg${roomName}`)) ?? [];
@@ -720,3 +746,12 @@ window.addEventListener('load', async () => {
     });
 });
 
+// Users should be warned if they are refreshing in the middle of
+// an update fetch, since this might cause them to lose messages.
+window.onbeforeunload = () => {
+    if (localStorage.getItem(`updating${roomName}`) === 'true') {
+        return 'The browser is fetching updates from the server right now. '
+            + 'Refreshing might cause you to lose some messages in transit. '
+            + 'Are you sure you want to refresh?';
+    }
+};
