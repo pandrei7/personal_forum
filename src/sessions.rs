@@ -217,7 +217,7 @@ impl SessionFairing {
             }
             let elapsed = start.elapsed();
 
-            const PERIOD: Duration = Duration::from_secs(1800);
+            const PERIOD: Duration = Duration::from_secs(300);
             if let Some(remaining) = PERIOD.checked_sub(elapsed) {
                 thread::sleep(remaining);
             }
@@ -229,7 +229,7 @@ impl SessionFairing {
     /// A session is considered old if its last update happened more than
     /// `TIMEOUT_SECS` seconds before the function was called.
     fn delete_old(conn: &Connection) -> postgres::Result<()> {
-        const TIMEOUT_SECS: i64 = 7200;
+        const TIMEOUT_SECS: i64 = 1200;
         let too_old = Session::current_timestamp() - TIMEOUT_SECS;
 
         conn.execute("DELETE FROM sessions WHERE last_update < $1;", &[&too_old])
