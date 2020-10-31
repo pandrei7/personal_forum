@@ -175,7 +175,7 @@ impl Session {
     fn current_timestamp() -> i64 {
         SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .expect("Error while calculating timestamp")
+            .expect("Error while calculating the session timestamp.")
             .as_secs() as i64
     }
 }
@@ -265,7 +265,7 @@ impl Fairing for SessionFairing {
         let conn = match req.guard::<DbConn>() {
             Outcome::Success(conn) => conn,
             _ => {
-                eprintln!("Could not connect to session database.");
+                eprintln!("Could not connect to the session database.");
                 return;
             }
         };
@@ -273,7 +273,7 @@ impl Fairing for SessionFairing {
         // Try to retrieve the existing session.
         if let Outcome::Success(mut session) = req.guard::<Session>() {
             if session.keep_alive(&conn).is_err() {
-                eprintln!("Could not keep session alive.");
+                eprintln!("Could not keep the session alive.");
             }
             return;
         }

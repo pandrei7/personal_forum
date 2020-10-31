@@ -66,7 +66,7 @@ fn admin_login(
         _ => {
             return Err(Flash::error(
                 Redirect::to("/admin_login"),
-                "Credentials are invalid.",
+                "Your credentials are invalid.",
             ))
         }
     };
@@ -174,7 +174,7 @@ fn enter_room(
     if !login.can_log_in(&conn).unwrap_or(false) {
         return Err(Flash::error(
             Redirect::to("/"),
-            "You do not have the correct credentials.",
+            "Your credentials are invalid.",
         ));
     }
 
@@ -189,7 +189,7 @@ fn room(name: RoomName, room: Option<Room>) -> Result<Template, Flash<Redirect>>
     if room.is_none() {
         return Err(Flash::error(
             Redirect::to("/"),
-            "You do not have the correct credentials.",
+            "Your credentials are invalid.",
         ));
     }
 
@@ -241,7 +241,7 @@ fn post(
     }
 
     room.add_message(&conn, message.content, session.id(), message.reply_to)
-        .map(|_| "Your message has been saved".into())
+        .map(|_| "Your message has been saved.".into())
         .map_err(|_| Status::InternalServerError)
 }
 

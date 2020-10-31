@@ -127,7 +127,7 @@ impl Message {
     pub fn current_timestamp() -> i64 {
         SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .expect("Error while calculating timestamp")
+            .expect("Error while calculating the message timestamp")
             .as_millis() as i64
     }
 }
