@@ -675,7 +675,7 @@ window.addEventListener('load', () => {
         '--text-color3': '#000000',
         '--text-color4': '#eceff1',
         '--text-faded1': '#90a4ae',
-        '--mark-background': '#1f282d',
+        '--mark-background': '#090c0d',
         '--mark-text-color': '#ff5722',
     });
 });
