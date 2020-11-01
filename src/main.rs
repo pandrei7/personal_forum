@@ -6,6 +6,7 @@ mod db;
 mod messages;
 mod rooms;
 mod sessions;
+mod static_resources;
 mod template_variables;
 mod users;
 
@@ -26,6 +27,7 @@ use db::{DbConn, DbInitFairing};
 use messages::{Message, MessageJson, Updates};
 use rooms::{Room, RoomLogin};
 use sessions::{Session, SessionFairing};
+use static_resources::StaticFile;
 use template_variables::WelcomeMessage;
 
 #[get("/")]
@@ -82,7 +84,7 @@ fn admin_login(
 }
 
 #[get("/admin_pane", rank = 1)]
-fn admin_pane_for_admin(_admin: Admin) -> Result<NamedFile, NotFound<String>> {
+fn admin_pane_for_admin(_admin: Admin) -> Result<StaticFile, NotFound<String>> {
     static_file(PathBuf::from("admin_pane.html"))
 }
 
@@ -246,14 +248,16 @@ fn post(
 }
 
 #[get("/colors")]
-fn colors() -> Result<NamedFile, NotFound<String>> {
+fn colors() -> Result<StaticFile, NotFound<String>> {
     static_file(PathBuf::from("colors.html"))
 }
 
 #[get("/static/<file..>", rank = 6)]
-fn static_file(file: PathBuf) -> Result<NamedFile, NotFound<String>> {
+fn static_file(file: PathBuf) -> Result<StaticFile, NotFound<String>> {
     let path = Path::new("static/").join(file);
-    NamedFile::open(&path).map_err(|err| NotFound(err.to_string()))
+    Ok(StaticFile(
+        NamedFile::open(&path).map_err(|err| NotFound(err.to_string()))?,
+    ))
 }
 
 fn rocket() -> rocket::Rocket {
