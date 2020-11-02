@@ -260,6 +260,11 @@ fn static_file(file: PathBuf) -> Result<StaticFile, NotFound<String>> {
     ))
 }
 
+#[catch(404)]
+fn not_found() -> Result<StaticFile, NotFound<String>> {
+    static_file(PathBuf::from("404.html"))
+}
+
 fn rocket() -> rocket::Rocket {
     rocket::ignite()
         .mount(
@@ -285,6 +290,7 @@ fn rocket() -> rocket::Rocket {
                 welcome_message,
             ],
         )
+        .register(catchers![not_found])
         .attach(Template::fairing())
         .attach(DbConn::fairing())
         .attach(DbInitFairing::default())
