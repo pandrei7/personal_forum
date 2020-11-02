@@ -4,7 +4,7 @@ body:after {
     height: 100%;
     left: 0;
     mix-blend-mode: difference;
-    opacity: .015;
+    opacity: .1;
     position: absolute;
     top: 0;
     width: 100%;
