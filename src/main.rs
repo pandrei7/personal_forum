@@ -1,3 +1,41 @@
+//! This is a server program for a forum-like web application.
+//!
+//! It is based on the [Rocket](https://rocket.rs/) framework, and it implements
+//! a method of sending forum messages to clients which minimizes the amount
+//! of data transferred for this.
+//!
+//! ## Running the server
+//!
+//! The server needs a PostgreSQL database to run. You should create one and
+//! pass its path through an environment variable.
+//!
+//! ```bash
+//! ROCKET_DATABASES={db={url=YOUR_DB_PATH}} cargo run --release
+//! ```
+//!
+//! If you are developing, you should probably **omit the `--release` flag**,
+//! to disable features like static file caching.
+//!
+//! For convenience, you can add your database path into `Rocket.toml`, like so:
+//!
+//! ```toml
+//! [global.databases]
+//! db = { url = "YOUR_DB_PATH" }
+//! ```
+//!
+//! This lets you run the server without setting the environment variable.
+//!
+//! The port on which the server runs can be set similarly, through the
+//! `ROCKET_PORT` environment variable, or in `Rocket.toml`, like so:
+//!
+//! ```toml
+//! [development]
+//! port = 8000
+//!
+//! [production]
+//! port = 80
+//! ```
+
 #![feature(proc_macro_hygiene, decl_macro)]
 
 mod admins;
