@@ -8,6 +8,9 @@
 
   <title>Personal forum</title>
 
+  <link rel="apple-touch-icon" href="/static/img/logo_full.png">
+  <link rel="icon" href="/static/img/logo_full.png">
+
   <link href="/static/css/base.css" rel="stylesheet">
   <link href="/static/css/index.css" rel="stylesheet">
 </head>
