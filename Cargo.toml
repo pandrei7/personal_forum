@@ -3,6 +3,7 @@ name = "personal_forum"
 version = "0.1.0"
 authors = ["pandrei7 <preda.andrei174@gmail.com>"]
 edition = "2018"
+license = "MIT"
 
 [dependencies]
 ammonia = "3"
