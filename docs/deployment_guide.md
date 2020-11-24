@@ -16,7 +16,7 @@ For example:
 
 ```bash
 # Clone the repo.
-git clone https://github.com/pandrei7/personal-forum.git YOUR_DIR
+git clone https://github.com/pandrei7/personal_forum.git YOUR_DIR
 cd YOUR_DIR
 
 # Make a new branch.
