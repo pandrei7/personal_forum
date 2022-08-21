@@ -6,7 +6,7 @@ edition = "2021"
 license = "MIT"
 
 [dependencies]
-ammonia = "3"
+ammonia = "3.2.1"
 pulldown-cmark = { version = "0.8", default-features = false, features = ["simd"] }
 rand = "0.7.3"
 rocket = { version = "0.5.0-rc.2", features = ["json", "secrets", "tls"] }
