@@ -13,13 +13,14 @@
 //! entire message-table content repeatedly. To achieve this, the `Room`
 //! struct allows retrieving updates only for given time intervals.
 
+use ::serde::Deserialize;
+use rocket::outcome::try_outcome;
 use rocket::request::{self, FromRequest, Request};
-use rocket_contrib::databases::postgres::rows::Row;
-use rocket_contrib::databases::postgres::{self, Connection};
-use serde::Deserialize;
+use rocket_sync_db_pools::postgres::row::Row;
+use rocket_sync_db_pools::postgres::Client;
 use sha2::{Digest, Sha256};
 
-use crate::db::DbConn;
+use crate::db::{self, DbConn};
 use crate::messages::{self, Message, Updates};
 use crate::sessions::Session;
 use crate::*;
@@ -49,33 +50,33 @@ impl Room {
     /// receive unique names, each room has an associated `table_id`, which
     /// becomes part of the name. The naming scheme is: `messages{table_id}`.
     pub fn create_room(
-        conn: &Connection,
+        client: &mut Client,
         name: String,
         hashed_password: String,
-    ) -> postgres::Result<()> {
+    ) -> Result<(), db::Error> {
         let creation = Message::current_timestamp();
-        conn.execute(
+        client.execute(
             "INSERT INTO rooms (name, password, creation) VALUES ($1, $2, $3);",
             &[&name, &hashed_password, &creation],
         )?;
 
         let table_id: i32 = query_one_row!(
-            conn,
+            client,
             "SELECT table_id FROM rooms WHERE name = $1;",
             &[&name],
             |row: Row| row.get(0)
         )?;
 
         let table = format!("messages{}", table_id);
-        Message::setup_table(&conn, &table).and(Ok(()))
+        Message::setup_table(client, &table).and(Ok(()))
     }
 
     /// Deletes a room from the database, also removing its message table.
     ///
     /// If the operation fails, the reason is returned as a readable string.
-    pub fn delete_room(conn: &Connection, name: &str) -> Result<(), String> {
+    pub fn delete_room(client: &mut Client, name: &str) -> Result<(), String> {
         let table_id: i32 = query_one_row!(
-            conn,
+            client,
             "SELECT table_id FROM rooms WHERE name = $1;",
             &[&name],
             |row: Row| row.get(0)
@@ -83,8 +84,8 @@ impl Room {
         .map_err(|_| "Error while retrieving table_id.")?;
 
         let table = format!("messages{}", table_id);
-        match conn.execute("DELETE FROM rooms WHERE name = $1;", &[&name]) {
-            Ok(1) => conn
+        match client.execute("DELETE FROM rooms WHERE name = $1;", &[&name]) {
+            Ok(1) => client
                 .execute(&format!("DROP TABLE IF EXISTS {};", table), &[])
                 .map(|_| ())
                 .map_err(|_| "Error while deleting the messages table.".into()),
@@ -93,21 +94,27 @@ impl Room {
     }
 
     /// Returns a list with the names of all the rooms stored in the database.
-    pub fn active_rooms(conn: &Connection) -> postgres::Result<Vec<String>> {
-        Ok(query_and_map!(conn, "SELECT name FROM rooms;", &[], |row: Row| row.get(0)).collect())
+    pub fn active_rooms(client: &mut Client) -> Result<Vec<String>, db::Error> {
+        Ok(
+            query_and_map!(client, "SELECT name FROM rooms;", &[], |row: Row| row
+                .get(0))
+            .collect(),
+        )
     }
 
     /// Changes the password of the given room.
     pub fn change_password(
-        conn: &Connection,
+        client: &mut Client,
         name: &str,
         hashed_password: &str,
-    ) -> postgres::Result<()> {
-        conn.execute(
-            "UPDATE rooms SET password = $1 WHERE name = $2;",
-            &[&hashed_password, &name],
-        )
-        .and(Ok(()))
+    ) -> Result<(), db::Error> {
+        client
+            .execute(
+                "UPDATE rooms SET password = $1 WHERE name = $2;",
+                &[&hashed_password, &name],
+            )
+            .and(Ok(()))
+            .map_err(Into::into)
     }
 
     /// Returns the next incremental updates a user should receive when requested.
@@ -115,16 +122,16 @@ impl Room {
     /// The timestamps should be given in the format used by the messages database.
     pub fn get_updates_between(
         &self,
-        conn: &Connection,
+        client: &mut Client,
         last_update: i64,
         now: i64,
-    ) -> postgres::Result<Updates> {
+    ) -> Result<Updates, db::Error> {
         // If this room is a recreation, the client might have messages from
         // the old room in their caches, so they should remove those first.
         let clean_stored = last_update <= self.creation;
 
         let table = format!("messages{}", self.table_id);
-        let messages = Message::get_between(&conn, &table, last_update, now)?;
+        let messages = Message::get_between(client, &table, last_update, now)?;
 
         Ok(Updates {
             clean_stored,
@@ -135,21 +142,21 @@ impl Room {
     /// Adds a new message to the room.
     pub fn add_message(
         &self,
-        conn: &Connection,
+        client: &mut Client,
         mut content: String,
         author: String,
         reply_to: Option<i32>,
-    ) -> postgres::Result<()> {
+    ) -> Result<(), db::Error> {
         messages::prepare_for_storage(&mut content);
 
         let table = format!("messages{}", self.table_id);
-        Message::add(&conn, &table, content, author, reply_to)
+        Message::add(client, &table, content, author, reply_to)
     }
 
     /// Tries to retrieve the database entry associated with a room, given its name.
-    fn from_db(conn: &Connection, name: &str) -> postgres::Result<Room> {
+    fn from_db(client: &mut Client, name: &str) -> Result<Room, db::Error> {
         query_one_row!(
-            conn,
+            client,
             "SELECT password, table_id, creation FROM rooms WHERE name = $1;",
             &[&name],
             |row: Row| Room {
@@ -166,7 +173,8 @@ impl Room {
     }
 }
 
-impl<'a, 'r> FromRequest<'a, 'r> for Room {
+#[rocket::async_trait]
+impl<'r> FromRequest<'r> for Room {
     type Error = ();
 
     /// Since rooms are password-protected, we must make sure a user is
@@ -187,25 +195,26 @@ impl<'a, 'r> FromRequest<'a, 'r> for Room {
     ///     }
     /// }
     /// ```
-    fn from_request(req: &'a Request<'r>) -> request::Outcome<Self, Self::Error> {
+    async fn from_request(req: &'r Request<'_>) -> request::Outcome<Self, Self::Error> {
         // Try to extract the name of the room.
         let name = {
             // Room requests should have URLs that start with `/room/<name>`.
-            let mut segs = req.uri().segments();
+            let mut segs = req.uri().path().segments();
             if segs.next() != Some("room") {
                 return request::Outcome::Forward(());
             }
             match segs.next() {
-                Some(name) => name,
+                Some(name) => name.to_owned(),
                 _ => return request::Outcome::Forward(()),
             }
         };
 
-        let conn = req.guard::<DbConn>()?;
+        let conn = try_outcome!(req.guard::<DbConn>().await);
 
         // Retrieve the room entry.
         let room = {
-            match Room::from_db(&conn, &name) {
+            let name = name.clone();
+            match conn.run(move |c| Room::from_db(c, &name)).await {
                 Ok(room) => room,
                 _ => return request::Outcome::Forward(()),
             }
@@ -213,8 +222,9 @@ impl<'a, 'r> FromRequest<'a, 'r> for Room {
 
         // Find the user's password attempt.
         let hashed_password = {
-            let session = req.guard::<Session>()?;
-            match session.get_room_attempt(&conn, &name) {
+            let name = name.clone();
+            let session = try_outcome!(req.guard::<Session>().await);
+            match conn.run(move |c| session.get_room_attempt(c, &name)).await {
                 Ok(password) => password,
                 _ => return request::Outcome::Forward(()),
             }
@@ -229,7 +239,7 @@ impl<'a, 'r> FromRequest<'a, 'r> for Room {
 }
 
 /// The content of a form used to hold login credentials for a room.
-#[derive(Deserialize, FromForm)]
+#[derive(Clone, Deserialize, FromForm)]
 pub struct RoomLogin {
     pub name: String,
     /// The plaintext password of the room.
@@ -238,9 +248,9 @@ pub struct RoomLogin {
 
 impl RoomLogin {
     /// Checks if the form contains the correct credentials to log into a room.
-    pub fn can_log_in(&self, conn: &Connection) -> postgres::Result<bool> {
+    pub fn can_log_in(&self, client: &mut Client) -> Result<bool, db::Error> {
         let hashed_password = hash_password(&self.password);
-        let room = Room::from_db(&conn, &self.name)?;
+        let room = Room::from_db(client, &self.name)?;
         Ok(room.valid_password(&hashed_password))
     }
 }

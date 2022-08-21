@@ -4,15 +4,16 @@
 //! used as template variables. The data types from this module should probably
 //! implement some useful traits to make interaction with them easy.
 
-use std::io::Read;
+use rocket::data::ToByteUnit;
 
-use rocket::data::{Data, FromDataSimple};
+use rocket::data::{Data, FromData};
 use rocket::http::Status;
+use rocket::outcome::try_outcome;
 use rocket::request::{self, FromRequest, Request};
-use rocket_contrib::databases::postgres::rows::Row;
-use rocket_contrib::databases::postgres::{self, Connection};
+use rocket_sync_db_pools::postgres::row::Row;
+use rocket_sync_db_pools::postgres::Client;
 
-use crate::db::DbConn;
+use crate::db::{self, DbConn};
 use crate::*;
 
 /// The maximum length (in bytes) allowed for a welcome message.
@@ -24,21 +25,23 @@ pub struct WelcomeMessage(pub String);
 
 impl WelcomeMessage {
     /// Saves the message to the database.
-    pub fn save_to_db(&self, conn: &Connection) -> postgres::Result<()> {
-        conn.execute(
-            "INSERT INTO template_variables (name, value) VALUES ('welcome_message', $1)
+    pub fn save_to_db(&self, client: &mut Client) -> Result<(), db::Error> {
+        client
+            .execute(
+                "INSERT INTO template_variables (name, value) VALUES ('welcome_message', $1)
             ON CONFLICT (name) DO UPDATE SET value = excluded.value;",
-            &[&self.0],
-        )
-        .and(Ok(()))
+                &[&self.0],
+            )
+            .and(Ok(()))
+            .map_err(Into::into)
     }
 
     /// Retrieves the current welcome message from the database.
     ///
     /// If the welcome message has not been set, an empty message is returned.
-    fn from_db(conn: &Connection) -> WelcomeMessage {
+    fn from_db(client: &mut Client) -> WelcomeMessage {
         match query_one_row!(
-            conn,
+            client,
             "SELECT value FROM template_variables WHERE name = 'welcome_message';",
             &[],
             |row: Row| WelcomeMessage(row.get(0))
@@ -50,16 +53,19 @@ impl WelcomeMessage {
     }
 }
 
-impl<'a, 'r> FromRequest<'a, 'r> for WelcomeMessage {
+#[rocket::async_trait]
+impl<'r> FromRequest<'r> for WelcomeMessage {
     type Error = ();
 
-    fn from_request(req: &'a Request<'r>) -> request::Outcome<Self, Self::Error> {
-        let conn = req.guard::<DbConn>()?;
-        request::Outcome::Success(WelcomeMessage::from_db(&conn))
+    async fn from_request(req: &'r Request<'_>) -> request::Outcome<Self, Self::Error> {
+        let conn = try_outcome!(req.guard::<DbConn>().await);
+        let msg = conn.run(WelcomeMessage::from_db).await;
+        request::Outcome::Success(msg)
     }
 }
 
-impl FromDataSimple for WelcomeMessage {
+#[rocket::async_trait]
+impl<'r> FromData<'r> for WelcomeMessage {
     type Error = String;
 
     /// Parses and cleans a welcome message from a body of data.
@@ -69,15 +75,17 @@ impl FromDataSimple for WelcomeMessage {
     /// It's important that this message is cleaned, otherwise an attacker
     /// who manages to obtain admin rights might insert malicious code which
     /// all users would receive.
-    fn from_data(_req: &Request, data: Data) -> data::Outcome<Self, Self::Error> {
-        let mut message = String::new();
-        if let Err(err) = data
-            .open()
-            .take(MAX_WELCOME_MESSAGE_LEN as u64)
-            .read_to_string(&mut message)
+    async fn from_data(_req: &'r Request<'_>, data: Data<'r>) -> data::Outcome<'r, Self> {
+        let message = match data
+            .open(MAX_WELCOME_MESSAGE_LEN.bytes())
+            .into_string()
+            .await
         {
-            return data::Outcome::Failure((Status::InternalServerError, format!("{:?}", err)));
-        }
+            Ok(string) => string.into_inner(),
+            Err(err) => {
+                return data::Outcome::Failure((Status::InternalServerError, format!("{:?}", err)));
+            }
+        };
 
         let message = ammonia::clean(&message);
         data::Outcome::Success(Self(message))

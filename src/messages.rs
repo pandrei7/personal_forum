@@ -8,18 +8,19 @@
 
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use ::serde::{Deserialize, Serialize};
 use pulldown_cmark::html;
 use pulldown_cmark::{Options, Parser};
-use rocket_contrib::databases::postgres::rows::Row;
-use rocket_contrib::databases::postgres::{self, Connection};
-use serde::{Deserialize, Serialize};
+use rocket_sync_db_pools::postgres::row::Row;
+use rocket_sync_db_pools::postgres::Client;
 
-use crate::*;
+use crate::db;
+use crate::query_and_map;
 
 /// Sanitizes a user's message and prepares it for being stored.
 ///
 /// To prevent attacks like HTML-injection, we should sanitize messages before
-/// sending them to other users. We also want to support CommonMark in messages,
+/// sending them to other users. We also want to support `CommonMark` in messages,
 /// which should be converted to normal HTML.
 ///
 /// To avoid doing this operation each time we need to send updates to a user,
@@ -45,6 +46,7 @@ pub struct Message {
     /// It's optional because, as sessions time out, messages can "forget" their author.
     /// It should be skipped when sending messages to clients, because it might
     /// allow attackers to impersonate other users, even admins.
+    #[allow(dead_code)]
     #[serde(skip_serializing)]
     author: Option<String>,
     /// Messages which start new threads have this field set to `None`.
@@ -54,7 +56,7 @@ pub struct Message {
 
 impl Message {
     /// Initializes the table which holds messages.
-    pub fn setup_table(conn: &Connection, table: &str) -> postgres::Result<()> {
+    pub fn setup_table(client: &mut Client, table: &str) -> Result<(), db::Error> {
         let sql = format!(
             "CREATE TABLE IF NOT EXISTS {table} (
                 id        SERIAL PRIMARY KEY,
@@ -67,7 +69,7 @@ impl Message {
             );",
             table = table
         );
-        conn.execute(&sql, &[]).and(Ok(()))
+        client.execute(&sql, &[]).and(Ok(()))
     }
 
     /// Returns all messages inserted into the table in the given interval.
@@ -77,13 +79,13 @@ impl Message {
     ///
     /// The timestamps should have the format used by the table.
     pub fn get_between(
-        conn: &Connection,
+        client: &mut Client,
         table: &str,
         old: i64,
         new: i64,
-    ) -> postgres::Result<Vec<Self>> {
+    ) -> Result<Vec<Self>, db::Error> {
         Ok(query_and_map!(
-            conn,
+            client,
             &format!(
                 "SELECT * FROM {} WHERE $1 < timestamp AND timestamp <= $2;",
                 table
@@ -102,22 +104,24 @@ impl Message {
 
     /// Adds a new message to a given table.
     pub fn add(
-        conn: &Connection,
+        client: &mut Client,
         table: &str,
         content: String,
         author: String,
         reply_to: Option<i32>,
-    ) -> postgres::Result<()> {
+    ) -> Result<(), db::Error> {
         let timestamp = Message::current_timestamp();
 
-        conn.execute(
-            &format!(
+        client
+            .execute(
+                &format!(
                 "INSERT INTO {} (content, timestamp, author, reply_to) VALUES ($1, $2, $3, $4);",
                 table
             ),
-            &[&content, &timestamp, &author, &reply_to],
-        )
-        .and(Ok(()))
+                &[&content, &timestamp, &author, &reply_to],
+            )
+            .and(Ok(()))
+            .map_err(Into::into)
     }
 
     /// Returns the current timestamp, as it should be saved in the table.

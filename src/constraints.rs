@@ -9,11 +9,10 @@
 //! make them easy to use, especially as parameter guards and data guards.
 
 use std::fmt::{self, Display, Formatter};
-use std::io::Read;
 
-use rocket::data::{Data, FromDataSimple, Outcome};
-use rocket::http::{RawStr, Status};
-use rocket::request::{FromParam, Request};
+use rocket::data::{Data, FromData, Outcome, ToByteUnit};
+use rocket::http::Status;
+use rocket::request::{self, FromParam, Request};
 use serde::Serialize;
 
 /// The maximum length (in bytes) allowed for a messsage.
@@ -50,27 +49,31 @@ impl RoomName {
 }
 
 impl<'r> FromParam<'r> for RoomName {
-    type Error = &'r RawStr;
+    type Error = &'r str;
 
-    fn from_param(param: &'r RawStr) -> Result<Self, Self::Error> {
+    fn from_param(param: &'r str) -> Result<Self, Self::Error> {
         RoomName::parse(param).map_err(|_| param)
     }
 }
 
-impl FromDataSimple for RoomName {
+#[rocket::async_trait]
+impl<'r> FromData<'r> for RoomName {
     type Error = String;
 
-    fn from_data(_req: &Request, data: Data) -> Outcome<Self, Self::Error> {
-        let mut name = String::new();
-        if let Err(err) = data
-            .open()
-            .take(MAX_ROOM_NAME_LEN as u64)
-            .read_to_string(&mut name)
-        {
-            return Outcome::Failure((Status::InternalServerError, format!("{:?}", err)));
-        }
+    async fn from_data(req: &'r Request<'_>, data: Data<'r>) -> Outcome<'r, Self> {
+        let name = match data.open(MAX_ROOM_NAME_LEN.bytes()).into_string().await {
+            Ok(string) => string.into_inner(),
+            Err(err) => {
+                return Outcome::Failure((Status::InternalServerError, format!("{:?}", err)))
+            }
+        };
 
-        match RoomName::parse(&name) {
+        // Suggested replacement for `FromDataSimple`.
+        // See https://github.com/SergioBenitez/Rocket/blob/v0.5-rc/CHANGELOG.md#data-and-forms
+        // and https://api.rocket.rs/v0.5-rc/rocket/data/trait.FromData.html.
+        let name = request::local_cache!(req, name);
+
+        match RoomName::parse(name) {
             Ok(room_name) => Outcome::Success(room_name),
             Err(reason) => Outcome::Failure((Status::UnprocessableEntity, reason)),
         }
