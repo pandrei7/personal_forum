@@ -76,7 +76,7 @@ button:hover {
     min-height: 6em;
     padding: .3rem .2rem;
     resize: vertical;
-    white-space: nowrap;
+    white-space: pre;
     width: 100%;
 }
 
