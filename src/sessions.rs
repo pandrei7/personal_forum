@@ -30,6 +30,9 @@ use crate::*;
 /// The name of the cookie used to hold a session's id.
 const SESSION_ID_COOKIE: &str = "session_id";
 
+/// The custom HTTP status indicating that a user's session has expired.
+const SESSION_EXPIRED: Status = Status::new(491);
+
 /// Holds relevant information about a session.
 ///
 /// It's closely tied to a row in the sessions table.
@@ -198,32 +201,17 @@ impl<'r> FromRequest<'r> for Session {
     /// A `Session` is retrieved from a request by using the `SESSION_ID_COOKIE`
     /// cookie to identify an existing entry in the sessions table.
     async fn from_request(req: &'r Request<'_>) -> Outcome<Session, Self::Error> {
-        // As of Rocket v0.5, changes made to cookies are not immediately visible. This means that,
-        // when the fairing creates a new session, the new cookie value is not visible through
-        // `get_private`, but through `get_pending`. We cannot use only `get_pending`, because it
-        // does not seem to decrypt the cookie if it was received as part of the request.
-        // Because of this, we try both functions, in order.
-
         // Try to retrieve the user's existing session, if it exists.
         let session_id = match req.cookies().get_private(SESSION_ID_COOKIE) {
             Some(cookie) => cookie.value().parse::<String>().unwrap(),
             None => return Outcome::Forward(()),
         };
 
+        // If the user's session id is not in the database, it expired.
         let conn = try_outcome!(req.guard::<DbConn>().await);
-        if let Ok(session) = conn.run(move |c| Session::from_db(c, &session_id)).await {
-            return Outcome::Success(session);
-        }
-
-        // Try to retrieve the newly created session.
-        let session_id = match req.cookies().get_pending(SESSION_ID_COOKIE) {
-            Some(cookie) => cookie.value().parse::<String>().unwrap(),
-            None => return Outcome::Forward(()),
-        };
-        if let Ok(session) = conn.run(move |c| Session::from_db(c, &session_id)).await {
-            Outcome::Success(session)
-        } else {
-            Outcome::Failure((Status::InternalServerError, ()))
+        match conn.run(move |c| Session::from_db(c, &session_id)).await {
+            Ok(session) => return Outcome::Success(session),
+            _ => return Outcome::Failure((SESSION_EXPIRED, ())),
         }
     }
 }
@@ -299,12 +287,17 @@ impl Fairing for SessionFairing {
             }
         };
 
-        // Try to retrieve the existing session.
-        if let Outcome::Success(mut session) = req.guard::<Session>().await {
-            if conn.run(move |c| session.keep_alive(c)).await.is_err() {
-                eprintln!("Could not keep the session alive.");
+        // Try to keep alive the existing session.
+        // Do not start a new session if an error occurs.
+        match req.guard::<Session>().await {
+            Outcome::Success(mut session) => {
+                if conn.run(move |c| session.keep_alive(c)).await.is_err() {
+                    eprintln!("Could not keep the session alive.");
+                }
+                return;
             }
-            return;
+            Outcome::Failure(_) => return,
+            _ => {}
         };
 
         // Give the user a new session.
@@ -317,4 +310,16 @@ impl Fairing for SessionFairing {
             eprintln!("Could not start a new session.");
         }
     }
+}
+
+/// A catcher for SESSION_EXPIRED messages which removes a user's old session id cookie.
+#[catch(491)]
+pub async fn session_expired(req: &Request<'_>) -> Flash<Redirect> {
+    req.cookies()
+        .remove_private(Cookie::named(sessions::SESSION_ID_COOKIE));
+
+    Flash::error(
+        Redirect::to("/"),
+        "It is possible that your session expired. Try again.",
+    )
 }

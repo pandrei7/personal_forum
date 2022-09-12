@@ -368,7 +368,7 @@ fn rocket() -> _ {
                 welcome_message,
             ],
         )
-        .register("/", catchers![not_found])
+        .register("/", catchers![not_found, sessions::session_expired])
         .attach(Template::fairing())
         .attach(DbConn::fairing())
         .attach(DbInitFairing::default())
