@@ -1,5 +1,6 @@
 //! Module for working with regular users, including non-administrators.
 
+use rocket::outcome::try_outcome;
 use rocket::request::{FromRequest, Outcome, Request};
 
 use crate::sessions::Session;
@@ -14,10 +15,7 @@ impl<'r> FromRequest<'r> for User {
     /// All users have a session associated with them.
     /// We derive the user data by retrieving their session.
     async fn from_request(req: &'r Request<'_>) -> Outcome<User, Self::Error> {
-        if let Outcome::Success(session) = req.guard::<Session>().await {
-            Outcome::Success(User(session))
-        } else {
-            Outcome::Forward(())
-        }
+        let session = try_outcome!(req.guard::<Session>().await);
+        Outcome::Success(User(session))
     }
 }
