@@ -1,4 +1,4 @@
-# ![Personal forum](docs/img/banner_full.png)
+# ![Personal forum](docs/img/banner_full_with_bg.png)
 
 **Personal forum** is a small client-server web app for communication. It's
 something between a forum and a chat room, allowing you to create multiple
