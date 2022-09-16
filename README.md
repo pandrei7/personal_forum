@@ -64,9 +64,7 @@ This allows you to run the server with just `cargo run`.
 ## Deploying
 
 [This guide](docs/deployment_guide.md) can help you deploy the web app on a free
-Heroku dyno, similar to the [demo page][demo-page]. Keep in mind that **the
-guide does not cover adding a SSL certificate**, which is necessary if you want
-to ensure that your conversations remain private.
+Fly.io instance, similar to the [demo page][demo-page].
 
 ## Contributing
 
@@ -88,4 +86,4 @@ are:
 - [Serde](https://serde.rs)
 - [findAndReplaceDOMText](https://github.com/padolsey/findAndReplaceDOMText)
 
-[demo-page]: https://calm-springs-86222.herokuapp.com "The demo page"
+[demo-page]: https://personal-forum.fly.dev "The demo page"
