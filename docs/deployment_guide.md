@@ -1,16 +1,21 @@
-# Deployment guide for Heroku
+# How to deploy the application to Fly.io
 
-This is a step-by-step guide for deploying the web app to Heroku, similar to the
-[demo page](https://calm-springs-86222.herokuapp.com/).
+> **Note**: This guide should be accurate as of September 2022.
+
+This is a step-by-step guide for deploying the web app to Fly.io, similar to the
+[demo page](https://personal-forum.fly.dev).
 
 If you notice any mistakes, feel free to open an issue.
 
-## Clone and make a separate branch
+ **Important**: Even though we only use free resources offered by the website,
+this guide still requires adding a form of payment information to your account.
 
-First, clone the repo to a directory of your liking, and `cd` into it.
+## Clone the repository
 
-I recommend creating a new branch for deployment, since we'll add a few files
-which we don't want to track normally.
+First, clone the repo to a directory of your liking and `cd` into it.
+
+I recommend creating a new branch for deployment, in case you decide to commit a
+few files which we don't normally track.
 
 For example:
 
@@ -19,145 +24,219 @@ For example:
 git clone https://github.com/pandrei7/personal_forum.git YOUR_DIR
 cd YOUR_DIR
 
-# Make a new branch.
-git checkout -b deploy
+# Create a new branch.
+git switch -c deploy
 ```
 
-## Heroku initialization
+## Set up the Dockerfile
 
-### Create an app
+Fly.io does not support Rust projects directly, but we can deploy any app if we
+provide a Dockerfile.
 
-Now we can create an app in this directory. We'll use
-[this rust buildpack](https://github.com/emk/heroku-buildpack-rust).
+Simply copy the code below in a file named `Dockerfile`:
+
+```dockerfile
+# Build the application.
+FROM rust:latest AS builder
+
+WORKDIR /app
+COPY . .
+
+RUN --mount=type=cache,target=/app/target \
+    --mount=type=cache,target=/usr/local/cargo/registry \
+    --mount=type=cache,target=/usr/local/cargo/git \
+    --mount=type=cache,target=/usr/local/rustup \
+    set -eux; \
+    rustup install stable; \
+    cargo build --release; \
+    objcopy --compress-debug-sections target/release/personal_forum ./personal_forum
+
+################################################################################
+
+# Copy the binary and other resources needed to run the server.
+FROM debian:stable-slim
+
+WORKDIR app
+
+COPY --from=builder /app/personal_forum ./personal_forum
+COPY static static
+COPY templates templates
+COPY Rocket.toml Rocket.toml
+
+CMD ROCKET_PROFILE=release ROCKET_DATABASES={db={url=${DATABASE_URL}}} ./personal_forum
+```
+
+You should also create a `.dockerignore` file with the following contents:
+
+```docker
+/target
+```
+
+## Configure the application for release mode
+
+Rocket requires us to set a secret key for encryption when we run the app in
+release mode. You can generate a key using the command below.
 
 ```bash
-heroku create --buildpack emk/rust
+openssl rand -base64 32
 ```
 
-### Add a dabatase
+Create a file named `Rocket.toml` if you don't already have one and add the
+following settings to it. Copy the secret key generated earlier inside.
 
-The web app requires a PostgreSQL database to run.
-Add one with the following command:
-
-```bash
-heroku addons:create heroku-postgresql:hobby-dev
+```toml
+[release]
+secret_key = "YOUR_SECRET_KEY"
+address = "0.0.0.0"
+port = 8080
 ```
 
-## Add some configuration files
+You do not *have* to use port 8080 if you don't want to, but make sure the port
+you use is the same as in Fly.io's configuration file (created later).
 
-- The Rocket framework needs a nightly version of the Rust compiler to work.
-We can tell Rust to use the nightly version by creating a `rust-toolchain` file
-with the following contents:
+## Set up the Fly.io application
 
-    ```lang-none
-    nightly
-    ```
+### Create an account and install `flyctl`
 
-- Create a `Procfile` file, telling Heroku how it should run our app.
-Paste this code inside it:
+First, you should make sure you have a Fly.io account and you have added a
+credit card to it (this is required for the free tier).
 
-    ```lang-none
-    web: ROCKET_PORT=$PORT ROCKET_ENV=prod ROCKET_DATABASES={db={url="$DATABASE_URL"}} ./target/release/personal_forum
-    ```
+Then, you should [install `flyctl`](https://fly.io/docs/flyctl/installing) and
+log in to your account with [`flyctl auth login`](
+https://fly.io/docs/flyctl/auth-login).
 
-    This command tells Rocket to use the port and database path assigned to us by
-    Heroku.
+### Create a new app
 
-- Commit these files.
+To create a new app, run [`flyctl launch`](https://fly.io/docs/flyctl/launch).
 
-    ```bash
-    git add rust-toolchain Procfile
-    git commit -m "Add some configuration files for deployment"
-    ```
+The utility should detect a Dockerfile app and prompt you for some settings.
+Choose a name and region you prefer. When prompted if you want to set up a
+PostgreSQL database now, choose `Yes` and select the `Development` configuration,
+as you can see below.
 
-### Make deployment faster (Optional)
+![Selecting the database configuration.](img/database_configuration.png)
 
-Building the app on the server will probably take a long time, especially the
-first time. If your computer can build binaries compatible with the Heroku
-server, you can compile the program on your own and simply push it to the
-server, thereby skipping the build step.
+This will actually create two applications: one for the web application and a
+separate one for the database.
 
-To do this, add a `RustConfig` file with the following contents:
+When prompted if you want to deploy the application now, choose `No`.
 
-```lang-none
-RUST_SKIP_BUILD=1
+### Check the app configuration
+
+You should now have a `fly.toml` file in your directory.
+
+Before you deploy the application, check that the settings in `fly.toml`  are
+appropriate. The defaults should be good, but make sure the `internal_port` is
+the same as the one you used in `Rocket.toml`.
+
+For reference, the settings below should work:
+
+```toml
+# fly.toml
+app = "YOUR_APP_NAME"
+kill_signal = "SIGINT"
+kill_timeout = 5
+processes = []
+
+[env]
+
+[experimental]
+  allowed_public_ports = []
+  auto_rollback = true
+
+[[services]]
+  http_checks = []
+  internal_port = 8080
+  processes = ["app"]
+  protocol = "tcp"
+  script_checks = []
+  [services.concurrency]
+    hard_limit = 25
+    soft_limit = 20
+    type = "connections"
+
+  [[services.ports]]
+    force_https = true
+    handlers = ["http"]
+    port = 80
+
+  [[services.ports]]
+    handlers = ["tls", "http"]
+    port = 443
+
+  [[services.tcp_checks]]
+    grace_period = "1s"
+    interval = "15s"
+    restart_limit = 0
+    timeout = "2s"
 ```
 
-Then, compile the binary with the `--release` flag.
+## Deploy the app
 
-```bash
-cargo build --release
-```
+When you are ready to deploy the application, run [`flyctl deploy`](
+https://fly.io/docs/flyctl/deploy). This will probably take a few minutes the
+first time you do it. If you ever make changes to the code and want to redeploy,
+simply run `flyctl deploy` again.
 
-Commit these files. The binary has to be added forcefully, since git normally
-ignores it.
+If the application deployed successfully, try to access it. You can do this
+either by running [`flyctl open`](https://fly.io/docs/flyctl/open) or by
+visiting the URL directly. You can find the URL on Fly.io's website, by clicking
+on your application and looking for the `hostname` field, as seen below.
 
-```bash
-git add -f RustConfig target/release/personal_forum
-git commit -m "Skip the building step"
-```
-
-> **Remember**: If you choose to do this, you will need to recompile and commit
-the binary each time you make changes.
-
-## Push to Heroku
-
-Now we can push our deployment branch to Heroku's master branch.
-
-```bash
-git push heroku deploy:master
-```
-
-Once pushed, the app will be compiled and run. This will probably take a while.
-
-When finished, the output might look like this. You can access the site at the
-URL mentioned there.
-
-![terminal output after deploying the app](img/deployment_output.png)
+!["Application information" pane at Fly.io](img/finding_hostname.png)
 
 The website should look like this:
 
-![website after begin deployed for the first time](img/fresh_website.png)
+![website after being deployed for the first time](img/fresh_website.png)
 
-## Add an admin
+## Add an administrator
 
-The server is controlled by logging into the admin pane using admin credentials.
-For security reasons, these credentials are held in the database and can only
-be modified manually. We will connect to the database using
-[psql](http://postgresguide.com/setup/install.html).
-You can learn a bit about it
-[here](http://postgresguide.com/utilities/psql.html).
+To control the server, you have to log into the admin pane using admin
+credentials. These credentials are held in the database and can only be modified
+manually. Follow the next steps to add an administrator account.
 
-We'll obtain the database's URI from [data.heroku.com](https://data.heroku.com/).
-Click on this app's database and access the `Settings` section.
-Copy the URI field from `Database Credentials`.
+### Choose the credentials
 
-![selecting the database uri](img/database_credentials.png)
-
-Choose a username and a password. Obtain the SHA-256 hash of your chosen password,
-then insert these in the `admins` table.
+First, choose a username and a password. Then, copy the SHA-256 hash of your
+password:
 
 ```bash
 # Obtain your password hash.
 echo -n 'YOUR_PASSWORD' | sha256sum
-
-# Log into the database.
-psql YOUR_POSTGRES_URI
 ```
+
+### Connect to the database
+
+You can connect to the database using [`flyctl postgres connect`](
+https://fly.io/docs/flyctl/postgres-connect).
+
+Run `flyctl postgres connect -a YOUR_DB_APP` using the name of your **database**
+application to open a [psql](http://postgresguide.com/utilities/psql.html)
+shell.
+
+Choose the right database and insert your credentials in the `admins` table:
 
 ```sql
+-- List all databases and find the correct one.
+\l
+-- Change to your database.
+\c YOUR_DB_NAME
+
+-- Insert the new admin.
 insert into admins (username, password) values ('YOUR_USERNAME', 'YOUR_HASH');
+
+-- Quit the psql shell.
+\q
 ```
 
-Quit by typing `\q`.
-
-You should now be able to login by accessing the `/admin_login` path.
+You should now be able to log in by accessing the `/admin_login` path.
 
 ## Next steps
 
-The deployment is now complete. You probably want to create some rooms and add
-a welcome message, which can be done from the admin pane. If you want to create
-a demo page for this app, you should display the credentials for open rooms in
-the welcome message. Don't forget that you can type HTML code for the message.
+The deployment is now complete. You probably want to create some rooms and add a
+welcome message, which can be done from the admin pane. If you want to create a
+demo page, you should display the credentials for open rooms in the welcome
+message, so visitors can see them. Don't forget that you can type HTML code for
+the message.
 
 ![website with a new welcome message](img/website_with_welcome.png)

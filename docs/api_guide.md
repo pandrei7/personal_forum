@@ -47,7 +47,8 @@ almost entirely server-side, meaning that all data associated with a session
 is kept on the server. The user receives an encrypted cookie called `session_id`
 which only contains an identifier used by the server to refer to a session.
 These session ids are sent on almost all requests which don't feature such a
-cookie. Normal users don't need to log into accounts.
+cookie. If a session expires, the cookie might get replaced. Normal users don't
+need to log into accounts.
 
 Users can obtain admin privileges by logging in using admin credentials.
 Similarly, rooms are password-protected, and users need to log into them.
