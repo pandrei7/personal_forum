@@ -6,4 +6,4 @@ This directory contains documentation files for various aspects of the
 ## Index
 
 - [API Guide](api_guide.md)
-- [Deployment guide for Heroku](deployment_guide.md)
+- [Deployment guide for Fly.io](deployment_guide.md)

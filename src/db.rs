@@ -5,13 +5,16 @@
 //! set it up when starting.
 
 use rocket::fairing::{Fairing, Info, Kind};
-use rocket::*;
-use rocket_contrib::databases::postgres::{self, Connection};
-use rocket_contrib::*;
+use rocket::{fairing, Build, Rocket};
+use rocket_sync_db_pools::{database, postgres, rocket};
 
 /// A connection to the database.
 #[database("db")]
-pub struct DbConn(Connection);
+pub struct DbConn(postgres::Client);
+
+/// An error which can result from interacting with the database.
+/// This type can "hide" the concrete type used by the database library.
+pub type Error = postgres::Error;
 
 /// A fairing which makes sure we can interact with the database correctly.
 #[derive(Default)]
@@ -22,8 +25,8 @@ impl DbInitFairing {
     ///
     /// It drops tables which should not be persistent, and makes sure
     /// all tables needed for the server to function are set up correctly.
-    fn init_db(&self, conn: &Connection) -> postgres::Result<()> {
-        conn.batch_execute(
+    fn init_db(client: &mut postgres::Client) -> Result<(), postgres::Error> {
+        client.batch_execute(
             "CREATE TABLE IF NOT EXISTS admins (
                 username TEXT PRIMARY KEY,
                 password TEXT NOT NULL
@@ -67,22 +70,23 @@ impl DbInitFairing {
     }
 }
 
+#[rocket::async_trait]
 impl Fairing for DbInitFairing {
     fn info(&self) -> Info {
         Info {
             name: "Database Init Fairing",
-            kind: Kind::Attach,
+            kind: Kind::Ignite,
         }
     }
 
     /// Sets up the database so that the server can start working.
-    fn on_attach(&self, rocket: Rocket) -> Result<Rocket, Rocket> {
-        let conn = match DbConn::get_one(&rocket) {
+    async fn on_ignite(&self, rocket: Rocket<Build>) -> fairing::Result {
+        let conn = match DbConn::get_one(&rocket).await {
             Some(conn) => conn,
             _ => return Err(rocket),
         };
 
-        match self.init_db(&conn) {
+        match conn.run(DbInitFairing::init_db).await {
             Ok(_) => Ok(rocket),
             _ => Err(rocket),
         }
@@ -94,21 +98,14 @@ impl Fairing for DbInitFairing {
 /// This is a convenience macro which makes sure that a given query
 /// returns only one row. You are also allowed to map that row using
 /// a function - `$row_map`. The macro gets evaluated to a value
-/// of type postgres::Result<T>, where T is the type returned by the
+/// of type `Result<T, db::Error>`, where T is the type returned by the
 /// map function. If the query does not return exactly one row, the
 /// operation is considered to have failed.
 #[macro_export]
 macro_rules! query_one_row {
-    ($conn: expr, $sql:expr, $params:expr, $row_map:expr) => {{
-        use rocket_contrib::databases::postgres;
-        use std::io::{Error, ErrorKind};
-
-        match $conn.query($sql, $params) {
-            Ok(rows) if rows.len() == 1 => Ok($row_map(rows.get(0))),
-            Ok(_) => {
-                let io_err = Error::new(ErrorKind::Other, "Wrong number of rows");
-                Err(postgres::Error::from(io_err))
-            }
+    ($client: expr, $sql:expr, $params:expr, $row_map:expr) => {{
+        match $client.query_one($sql, $params) {
+            Ok(row) => Ok($row_map(row)),
             Err(err) => Err(err),
         }
     }};
@@ -121,7 +118,7 @@ macro_rules! query_one_row {
 /// If the query fails, the macro returns the error early.
 #[macro_export]
 macro_rules! query_and_map {
-    ($conn: expr, $sql:expr, $params:expr, $row_map:expr) => {{
-        $conn.query($sql, $params)?.into_iter().map($row_map)
+    ($client: expr, $sql:expr, $params:expr, $row_map:expr) => {{
+        $client.query($sql, $params)?.into_iter().map($row_map)
     }};
 }
