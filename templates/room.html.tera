@@ -27,6 +27,7 @@
         <div id="colors-dropdown-content" class="dropdown-content">
           <button id="light-theme-button">Light</button>
           <button id="dark-theme-button">Dark</button>
+          <button id="cool-theme-button">Cool</button>
           <form action="/colors">
             <button id="customize-colors-button">Customize</button>
           </form>
