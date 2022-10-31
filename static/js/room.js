@@ -624,7 +624,7 @@ window.addEventListener('load', () => {
         event.preventDefault();
 
         const wantedRoomName = goToRoom.value.trim();
-        if (event.keyCode === 13 && wantedRoomName) {
+        if (event.key === 'Enter' && wantedRoomName) {
             location.assign(`/room/${wantedRoomName}`);
         }
     });
