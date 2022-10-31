@@ -678,6 +678,23 @@ window.addEventListener('load', () => {
         '--mark-background': '#090c0d',
         '--mark-text-color': '#ff5722',
     });
+    document.getElementById('cool-theme-button').onclick = () => changeColors({
+        '--background1': '#f6f6c9',
+        '--background2': '#4fa095',
+        '--primary1': '#bad1c2',
+        '--primary2': '#628e90',
+        '--secondary1': '#150050',
+        '--secondary2': '#0f3464',
+        '--extra1': '#fcfcfc',
+        '--extra2': '#c21807',
+        '--text-color1': '#153462',
+        '--text-color2': '#42032c',
+        '--text-color3': '#ffffff',
+        '--text-color4': '#fafafa',
+        '--text-faded1': '#424242',
+        '--mark-background': '#fafafa',
+        '--mark-text-color': '#660000',
+    });
 });
 
 // Set up the quick guide overlay.
