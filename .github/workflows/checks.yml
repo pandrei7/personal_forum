@@ -3,6 +3,7 @@ name: Run basic checks and tests
 on:
   pull_request:
     branches: [develop, main]
+    types: [synchronize]
   push:
     branches: [develop, main]
 
