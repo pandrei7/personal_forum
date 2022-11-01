@@ -106,12 +106,12 @@ nav {
     background: linear-gradient(#1f282d, #263a38, #1f282d);
 }
 
-#cool-theme-button {
+#hack2022-theme-button {
     background: linear-gradient(#628e90, #bad1c2, #628e90);
     color: #153462;
 }
 
-#cool-theme-button:hover {
+#hack2022-theme-button:hover {
     background: linear-gradient(#bad1c2, #628e90, #bad1c2);
 }
 
