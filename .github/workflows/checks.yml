@@ -2,9 +2,10 @@ name: Run basic checks and tests
 
 on:
   pull_request:
-    branches: [develop, main]
+    branches: [develop, master]
+    types: [synchronize]
   push:
-    branches: [develop, main]
+    branches: [develop, master]
 
 jobs:
   run_all_checks:

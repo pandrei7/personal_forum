@@ -624,7 +624,7 @@ window.addEventListener('load', () => {
         event.preventDefault();
 
         const wantedRoomName = goToRoom.value.trim();
-        if (event.keyCode === 13 && wantedRoomName) {
+        if (event.key === 'Enter' && wantedRoomName) {
             location.assign(`/room/${wantedRoomName}`);
         }
     });
@@ -678,7 +678,7 @@ window.addEventListener('load', () => {
         '--mark-background': '#090c0d',
         '--mark-text-color': '#ff5722',
     });
-    document.getElementById('cool-theme-button').onclick = () => changeColors({
+    document.getElementById('hack2022-theme-button').onclick = () => changeColors({
         '--background1': '#f6f6c9',
         '--background2': '#4fa095',
         '--primary1': '#bad1c2',

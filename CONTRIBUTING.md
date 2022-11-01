@@ -31,6 +31,12 @@ writing:
 4. [Make a pull request](https://guides.github.com/activities/forking/#making-changes)
     and describe your changes.
 
+### Conventional Commits
+
+When making new commits, please try to follow the [Conventional Commits](
+https://www.conventionalcommits.org/en/v1.0.0) specification, using commit types
+such as `fix`, `feat`, `docs`, `ci`, `chore` etc.
+
 ### Coding style
 
 For the backend code, we use Rust's standard coding style tools, like
