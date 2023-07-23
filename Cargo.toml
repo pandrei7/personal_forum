@@ -1,6 +1,6 @@
 [package]
 name = "personal_forum"
-version = "0.2.0"
+version = "0.2.2"
 authors = ["pandrei7 <preda.andrei174@gmail.com>"]
 edition = "2021"
 license = "MIT"
