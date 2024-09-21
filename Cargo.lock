@@ -1346,7 +1346,7 @@ checksum = "e3148f5046208a5d56bcfc03053e3ca6334e51da8dfb19b6cdc8b306fae3283e"
 
 [[package]]
 name = "personal_forum"
-version = "0.2.3"
+version = "0.3.0"
 dependencies = [
  "ammonia",
  "pulldown-cmark",
