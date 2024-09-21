@@ -31,7 +31,7 @@ impl<'r> FromRequest<'r> for Admin {
         if session.is_admin() {
             Outcome::Success(Admin(session))
         } else {
-            Outcome::Forward(())
+            Outcome::Forward(Status::Unauthorized)
         }
     }
 }
