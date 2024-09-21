@@ -96,6 +96,21 @@ you use is the same as in Fly.io's configuration file (created later).
 
 ## Set up the Fly.io application
 
+> [!WARNING]
+>
+> ### Update (September 2024)
+>
+> This guide is slightly old by now, and working with Fly.io changed a bit.
+>
+> Recently, after running `fly launch`, you can choose to tweak the
+> configuration in your browser. Here you can select a Postgres database and
+> give it a name, as in the images below.
+>
+> ![CLI prompt asking whether to tweak settings.](img/fly_cli_tweak_prompt.png)
+> ![Postgres tweaks in the Fly.io UI.](img/fly_pg_settings.png)
+>
+> You can remove the TCP health checks from `fly.toml` if they keep failing.
+
 ### Create an account and install `flyctl`
 
 First, you should make sure you have a Fly.io account and you have added a

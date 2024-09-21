@@ -63,9 +63,7 @@ impl<'r> FromData<'r> for RoomName {
     async fn from_data(req: &'r Request<'_>, data: Data<'r>) -> Outcome<'r, Self> {
         let name = match data.open(MAX_ROOM_NAME_LEN.bytes()).into_string().await {
             Ok(string) => string.into_inner(),
-            Err(err) => {
-                return Outcome::Failure((Status::InternalServerError, format!("{:?}", err)))
-            }
+            Err(err) => return Outcome::Error((Status::InternalServerError, format!("{:?}", err))),
         };
 
         // Suggested replacement for `FromDataSimple`.
@@ -75,7 +73,7 @@ impl<'r> FromData<'r> for RoomName {
 
         match RoomName::parse(name) {
             Ok(room_name) => Outcome::Success(room_name),
-            Err(reason) => Outcome::Failure((Status::UnprocessableEntity, reason)),
+            Err(reason) => Outcome::Error((Status::UnprocessableEntity, reason)),
         }
     }
 }

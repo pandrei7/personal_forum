@@ -16,6 +16,7 @@
 use ::serde::Deserialize;
 use rocket::outcome::try_outcome;
 use rocket::request::{self, FromRequest, Request};
+use rocket_sync_db_pools::postgres::error::SqlState;
 use rocket_sync_db_pools::postgres::row::Row;
 use rocket_sync_db_pools::postgres::Client;
 use sha2::{Digest, Sha256};
@@ -201,11 +202,11 @@ impl<'r> FromRequest<'r> for Room {
             // Room requests should have URLs that start with `/room/<name>`.
             let mut segs = req.uri().path().segments();
             if segs.next() != Some("room") {
-                return request::Outcome::Forward(());
+                return request::Outcome::Forward(Status::BadRequest);
             }
             match segs.next() {
                 Some(name) => name.to_owned(),
-                _ => return request::Outcome::Forward(()),
+                _ => return request::Outcome::Forward(Status::BadRequest),
             }
         };
 
@@ -216,7 +217,7 @@ impl<'r> FromRequest<'r> for Room {
             let name = name.clone();
             match conn.run(move |c| Room::from_db(c, &name)).await {
                 Ok(room) => room,
-                _ => return request::Outcome::Forward(()),
+                _ => return request::Outcome::Forward(Status::NotFound),
             }
         };
 
@@ -226,14 +227,17 @@ impl<'r> FromRequest<'r> for Room {
             let session = try_outcome!(req.guard::<Session>().await);
             match conn.run(move |c| session.get_room_attempt(c, &name)).await {
                 Ok(password) => password,
-                _ => return request::Outcome::Forward(()),
+                Err(e) if e.code() == Some(&SqlState::NO_DATA) => {
+                    return request::Outcome::Forward(Status::Unauthorized)
+                }
+                _ => return request::Outcome::Forward(Status::InternalServerError),
             }
         };
 
         if hashed_password == room.password {
             request::Outcome::Success(room)
         } else {
-            request::Outcome::Forward(())
+            request::Outcome::Forward(Status::Unauthorized)
         }
     }
 }

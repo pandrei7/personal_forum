@@ -204,14 +204,14 @@ impl<'r> FromRequest<'r> for Session {
         // Try to retrieve the user's existing session, if it exists.
         let session_id = match req.cookies().get_private(SESSION_ID_COOKIE) {
             Some(cookie) => cookie.value().parse::<String>().unwrap(),
-            None => return Outcome::Forward(()),
+            None => return Outcome::Forward(Status::Unauthorized),
         };
 
         // If the user's session id is not in the database, it expired.
         let conn = try_outcome!(req.guard::<DbConn>().await);
         match conn.run(move |c| Session::from_db(c, &session_id)).await {
             Ok(session) => return Outcome::Success(session),
-            _ => return Outcome::Failure((SESSION_EXPIRED, ())),
+            _ => return Outcome::Error((SESSION_EXPIRED, ())),
         }
     }
 }
@@ -296,15 +296,13 @@ impl Fairing for SessionFairing {
                 }
                 return;
             }
-            Outcome::Failure(_) => return,
+            Outcome::Error(_) => return,
             _ => {}
         };
 
         // Give the user a new session.
         if let Ok(id) = conn.run(Session::start_new).await {
-            let cookie = Cookie::build(SESSION_ID_COOKIE, id)
-                .http_only(true)
-                .finish();
+            let cookie = Cookie::build((SESSION_ID_COOKIE, id)).http_only(true);
             req.cookies().add_private(cookie);
         } else {
             eprintln!("Could not start a new session.");
@@ -316,7 +314,7 @@ impl Fairing for SessionFairing {
 #[catch(491)]
 pub async fn session_expired(req: &Request<'_>) -> Flash<Redirect> {
     req.cookies()
-        .remove_private(Cookie::named(sessions::SESSION_ID_COOKIE));
+        .remove_private(Cookie::build(sessions::SESSION_ID_COOKIE));
 
     Flash::error(
         Redirect::to("/"),

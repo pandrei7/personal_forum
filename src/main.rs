@@ -371,6 +371,6 @@ fn rocket() -> _ {
         .register("/", catchers![not_found, sessions::session_expired])
         .attach(Template::fairing())
         .attach(DbConn::fairing())
-        .attach(DbInitFairing::default())
-        .attach(SessionFairing::default())
+        .attach(DbInitFairing)
+        .attach(SessionFairing)
 }

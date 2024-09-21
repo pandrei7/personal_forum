@@ -83,7 +83,7 @@ impl<'r> FromData<'r> for WelcomeMessage {
         {
             Ok(string) => string.into_inner(),
             Err(err) => {
-                return data::Outcome::Failure((Status::InternalServerError, format!("{:?}", err)));
+                return data::Outcome::Error((Status::InternalServerError, format!("{:?}", err)));
             }
         };
 
